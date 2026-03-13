@@ -5,14 +5,17 @@ from ..layouts import UiContainerHorizontal, UiContainerVertical
 import re
 
 class UIBox(Node):
-    def __init__(self, weight, text, title=""): 
-        super().__init__(weight=weight) 
+    def __init__(self, weight, text, title="", focusable=True): 
+        super().__init__(weight=weight, focusable=focusable) 
         self.text = text
         self.title = title
         self.selected = False 
     
     def display(self, width, height):
-        prefix = "● " if self.selected else "○ "
+        if self.focusable:
+            prefix = "● " if self.selected else "○ "
+        else:
+            prefix = ""
         content = f"{prefix}{self.text}" if self.title else f"{prefix}{self.text}"
         
         # Color is applied to the content *before* wrapping to keep borders clean
@@ -296,7 +299,7 @@ class UISelect(UIBox):
     
 class UIInput(Node):
     def __init__(self, weight, label=" URL: ", initial_text=""):
-        super().__init__(weight=weight)
+        super().__init__(weight=weight, focusable=True)
         self.label = label
         self.text = initial_text
         self.idx = len(initial_text) # The "Insertion Point"
@@ -389,7 +392,7 @@ class TabManagerH(UiContainerHorizontal):
 
 class UIScrollText(Node):
     def __init__(self, weight, text="", title="", show_line_numbers=False):
-        super().__init__(weight=weight)
+        super().__init__(weight=weight, focusable=True)
         self.text = text
         self.title = title
         self.show_line_numbers = show_line_numbers
