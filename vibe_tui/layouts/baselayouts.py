@@ -1,0 +1,70 @@
+from ..node import Node
+from itertools import zip_longest
+
+class UiContainerHorizontal(Node):
+    def __init__(self, weight=1):
+        super().__init__(weight=weight)
+        self.nodes = []
+
+    def add(self, node: Node):
+        self.nodes.append(node)
+        return self
+
+    def display(self, width, height):
+        if not self.nodes: return [" " * width for _ in range(height)]
+        
+        total_weight = sum(n.weight for n in self.nodes)
+        used_width = 0
+        all_child_outputs = []
+        
+        for i, node in enumerate(self.nodes):
+            # Calculate width for this slice
+            if i == len(self.nodes) - 1:
+                node_w = width - used_width
+            else:
+                node_w = int((node.weight / total_weight) * width) if total_weight > 0 else width // len(self.nodes)
+            
+            # Get child lines and store them
+            all_child_outputs.append(node.display(node_w, height))
+            used_width += node_w
+
+        # STITCHING: Join line 0 of every child, then line 1, etc.
+        # zip_longest handles children with different row counts
+        return ["".join(lines) for lines in zip_longest(*all_child_outputs, fillvalue=" ")]
+    
+    def reset(self):
+        self.nodes = []
+        return self
+
+class UiContainerVertical(Node):
+    def __init__(self, weight=1):
+        super().__init__(weight=weight)
+        self.nodes = []
+
+    def add(self, node: Node):
+        self.nodes.append(node)
+        return self
+
+    def display(self, width, height):
+        if not self.nodes: return [" " * width for _ in range(height)]
+        
+        total_weight = sum(n.weight for n in self.nodes)
+        used_height = 0
+        combined_output = []
+        
+        for i, node in enumerate(self.nodes):
+            # Calculate height for this slice
+            if i == len(self.nodes) - 1:
+                node_h = height - used_height
+            else:
+                node_h = int((node.weight / total_weight) * height) if total_weight > 0 else height // len(self.nodes)
+            
+            # STACKING: Just extend the list with child lines
+            combined_output.extend(node.display(width, node_h))
+            used_height += node_h
+            
+        return combined_output
+    
+    def reset(self):
+        self.nodes = []
+        return self

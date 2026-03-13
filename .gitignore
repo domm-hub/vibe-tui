@@ -1,0 +1,17 @@
+# 1. Ignore EVERYTHING in the root directory first
+/*
+
+# 2. Re-include the specific folders and files you want to track
+!/vibe_tui/
+!/.gitignore
+!/README.md
+!/pyproject.toml
+!/LICENSE
+
+# 3. Standard Python ignores (for inside the tracked folders)
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 4. Explicitly ignore virtual environments (even if they were in the root)
+env/
