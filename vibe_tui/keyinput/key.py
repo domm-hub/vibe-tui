@@ -16,17 +16,30 @@ class Key:
     BTAB      = ("\x1b[Z", "KEY_BTAB",    1005) # Shift+Tab
     ESCAPE    = ("\x1b", "KEY_ESCAPE",    27)
 
+    _MAP = None
+
+    @classmethod
+    def _get_map(cls):
+        if cls._MAP is None:
+            # Build mapping of all defined tuples
+            cls._MAP = {}
+            for attr in dir(cls):
+                if not attr.startswith("_"):
+                    val = getattr(cls, attr)
+                    if isinstance(val, tuple) and len(val) == 3:
+                        cls._MAP[val[0]] = val
+        return cls._MAP
+
     @classmethod
     def get(cls, raw):
         """
         Translates raw input into the (ansi, name, ord) tuple.
         If it's a standard character, it generates the tuple on the fly.
         """
-        # 1. Check if it's a pre-defined special key
-        for attr in dir(cls):
-            val = getattr(cls, attr)
-            if isinstance(val, tuple) and val[0] == raw:
-                return val
+        # 1. Check pre-defined mapping
+        mapping = cls._get_map()
+        if raw in mapping:
+            return mapping[raw]
         
         # 2. Handle standard characters (a, b, 1, !, etc.)
         if len(raw) == 1:

@@ -1,6 +1,7 @@
 from ..node import Node
 from ..base import wrap
 from ..base.colors import Colors
+from ..base.theme import Theme
 
 class UIBox(Node):
     def __init__(self, weight, text, title="", focusable=True): 
@@ -9,30 +10,19 @@ class UIBox(Node):
         self.title = title
         self.selected = False 
     
+    def set_text(self, text):
+        self.text = text
+
     def display(self, width, height):
-        if self.focusable:
-            prefix = "● " if self.selected else "○ "
-        else:
-            prefix = ""
-        content = f"{prefix}{self.text}" if self.title else f"{prefix}{self.text}"
+        # Determine focus indicator and border from Theme
+        prefix = (Theme.selected if self.selected else Theme.unselected) if self.focusable else ""
+        content = f"{prefix}{self.text}"
         
-        # Color is applied to the content *before* wrapping to keep borders clean
+        chars = Theme.focus_borders if self.selected else Theme.borders
+        
+        # Apply color if set
         if self.color:
             content = self.color + content.replace('\n', Colors.RESET + '\n' + self.color) + Colors.RESET
             
-        return wrap(content, w=width, h=height, title=self.title)
-
-        
-    def display(self, width, height):
-        # 1. Determine the correct prefix based on FocusManager state
-        pr = "● " if self.selected else "○ "
-        
-        # 2. Clean the text of any existing icons to prevent "● ○ ● ○ Code"
-        clean_text = self.text.lstrip("● ").lstrip("○ ")
-        
-        # 3. Combine them for the wrap function
-        # Note: Avoid \n here unless you want the code to start on the second line
-        display_text = f"{pr}\n{clean_text}"
-        
-        return wrap(display_text, w=width, h=height, title=self.title, title_pos="center")
+        return wrap(content, w=width, h=height, title=self.title, chars=chars)
     

@@ -1,5 +1,6 @@
 import re
 from wcwidth import wcswidth, wcwidth
+from .theme import Theme
 
 # Standard ANSI regex
 ANSI_REGEX = re.compile(r'\x1b\[[0-?]*[ -/]*[@-~]')
@@ -13,7 +14,7 @@ def real_len(text):
 
 def wrap(text, w, h, chars=None, color=None, title="", title_pos="left"):
     if chars is None:
-        chars = {"tl": "╭", "tr": "╮", "bl": "╰", "br": "╯", "h": "─", "v": "│"}
+        chars = Theme.borders
     
     inner_w = max(0, w - 2)
     inner_h = max(0, h - 2)

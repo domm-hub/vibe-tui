@@ -1,6 +1,7 @@
 from ..base_widgets import UIBox
 from ...base import wrap
 from ...base.colors import Colors
+from ...base.theme import Theme
 
 
 class UIButton(UIBox):
@@ -10,25 +11,17 @@ class UIButton(UIBox):
         self.is_pressed = False 
     
     def display(self, width, height):
-        # Use curved borders always, no bold
-        
+        # Borders change when pressed OR selected
         if self.is_pressed:
-            chars = {
-                "tl": "┏", 
-                "tr": "┓", 
-                "bl": "┗", 
-                "br": "┛", 
-                "h": "━", 
-                "v": "┃"
-            }
+            chars = Theme.BOLD
+        elif self.selected:
+            chars = Theme.focus_borders
         else:
-            chars = {"tl": "╭", "tr": "╮", "bl": "╰", "br": "╯", "h": "─", "v": "│"}
+            chars = Theme.borders
         
-        
-
-        prefix = "● " if self.selected else "○ "
+        prefix = Theme.selected if self.selected else Theme.unselected
             
-        content = f"{prefix}{self.text}" if self.title else f"{prefix}{self.text}"
+        content = f"{prefix}{self.text}"
         
         if self.color:
             content = self.color + content.replace('\n', Colors.RESET + '\n' + self.color) + Colors.RESET
@@ -37,11 +30,14 @@ class UIButton(UIBox):
     
     def press(self):
         if self.selected:
-            if not self.is_pressed:
-                self.is_pressed = True
-            else:
-                self.is_pressed = False
+            # UIButton "press" usually triggers an action and flashes is_pressed
+            self.is_pressed = True
+            # Legacy callback support
             if self.onclick: self.onclick()
+            # New signal system
+            self.emit("click")
+            # We don't reset is_pressed immediately to allow a frame of feedback
+            # In a real loop, you'd reset it next frame
             
         
 class UICheckbox(UIBox):
@@ -51,27 +47,15 @@ class UICheckbox(UIBox):
         self.checked = default_state # Tracks the boolean state
     
     def display(self, width, height):
-        # Curved borders
-        chars = {"tl": "╭", "tr": "╮", "bl": "╰", "br": "╯", "h": "─", "v": "│"}
+        chars = Theme.focus_borders if self.selected else Theme.borders
         
-        # Checkbox visual
-        prefix = "[X] " if self.checked else "[ ] "
-        if self.selected:
-            prefix = "● " + prefix
-        else:
-            prefix = "○ " + prefix
+        # Checkbox visual from Theme
+        icon = Theme.checked if self.checked else Theme.unchecked
+        prefix = (Theme.selected if self.selected else Theme.unselected) + icon
             
-        content = f"{prefix}{self.text}" if self.title else f"{prefix}{self.text}"
+        content = f"{prefix}{self.text}"
         
         if self.color:
             content = self.color + content.replace('\n', Colors.RESET + '\n' + self.color) + Colors.RESET
 
         return wrap(content, w=width, h=height, chars=chars, title=self.title)
-    
-    def press(self):
-        # Toggle state on press
-        if self.selected:
-            self.checked = not self.checked
-            if self.on_toggle: 
-                self.on_toggle(self.checked) # Pass the new state to the callback
-                

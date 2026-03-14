@@ -1,10 +1,11 @@
+from ...base.theme import Theme
 from ...base import wrap
 from ...base.colors import Colors
-from ...node import Node
-from ...layouts import UiContainerHorizontal, UiContainerVertical
-import re
 from ..base_widgets import UIBox
-from ...keyinput import Key
+from ...node import Node
+from ...event.eventmanager import Event
+import re
+
 
 class UIEditor(UIBox):
     def __init__(self, weight, text="", title=" EDITOR "):
@@ -16,33 +17,36 @@ class UIEditor(UIBox):
         self.blink_counter = 0
 
     def handle_input(self, key):
+        event = Event(key)
         self.blink_counter = 0 # Reset blink on activity
-        
-        if key in Key.UP:
-            if self.cursor_y > 0:
-                self.cursor_y -= 1
-                self.cursor_x = min(self.cursor_x, len(self.lines[self.cursor_y]))
-        
-        elif key in Key.DOWN:
-            if self.cursor_y < len(self.lines) - 1:
-                self.cursor_y += 1
-                self.cursor_x = min(self.cursor_x, len(self.lines[self.cursor_y]))
-        
-        elif key in Key.LEFT:
-            if self.cursor_x > 0:
-                self.cursor_x -= 1
-            elif self.cursor_y > 0:
-                self.cursor_y -= 1
-                self.cursor_x = len(self.lines[self.cursor_y])
-        
-        elif key in Key.RIGHT:
-            if self.cursor_x < len(self.lines[self.cursor_y]):
-                self.cursor_x += 1
-            elif self.cursor_y < len(self.lines) - 1:
-                self.cursor_y += 1
-                self.cursor_x = 0
+        modified = False
+        if event.is_nav:
+            if event.is_up:
+                if self.cursor_y > 0:
+                    self.cursor_y -= 1
+                    self.cursor_x = min(self.cursor_x, len(self.lines[self.cursor_y]))
+            
+            elif event.is_down:
+                if self.cursor_y < len(self.lines) - 1:
+                    self.cursor_y += 1
+                    self.cursor_x = min(self.cursor_x, len(self.lines[self.cursor_y]))
+            
+            elif event.is_left:
+                if self.cursor_x > 0:
+                    self.cursor_x -= 1
+                elif self.cursor_y > 0:
+                    self.cursor_y -= 1
+                    self.cursor_x = len(self.lines[self.cursor_y])
+            
+            elif event.is_right:
+                if self.cursor_x < len(self.lines[self.cursor_y]):
+                    self.cursor_x += 1
+                elif self.cursor_y < len(self.lines) - 1:
+                    self.cursor_y += 1
+                    self.cursor_x = 0
 
-        elif key in Key.BACKSPACE:
+        if event.is_backspace:
+            modified = True
             if self.cursor_x > 0:
                 line = self.lines[self.cursor_y]
                 self.lines[self.cursor_y] = line[:self.cursor_x-1] + line[self.cursor_x:]
@@ -54,7 +58,8 @@ class UIEditor(UIBox):
                 self.cursor_y -= 1
                 self.cursor_x = prev_len
 
-        elif key == Key.ENTER:
+        elif event.is_enter:
+            modified = True
             # Split line at cursor
             line = self.lines[self.cursor_y]
             self.lines[self.cursor_y] = line[:self.cursor_x]
@@ -62,11 +67,15 @@ class UIEditor(UIBox):
             self.cursor_y += 1
             self.cursor_x = 0
 
-        elif isinstance(key, str) and len(key) == 1:
+        elif event.is_char:
+            modified = True
             # Standard character insertion
             line = self.lines[self.cursor_y]
-            self.lines[self.cursor_y] = line[:self.cursor_x] + key + line[self.cursor_x:]
+            self.lines[self.cursor_y] = line[:self.cursor_x] + event.char + line[self.cursor_x:]
             self.cursor_x += 1
+        
+        if modified:
+            self.emit("change", self.lines)
 
     def display(self, width, height):
         self.blink_counter += 1
@@ -83,7 +92,7 @@ class UIEditor(UIBox):
         
         # Prepare content with cursor
         output_lines = []
-        cursor_char = "█" if (self.blink_counter // 15) % 2 == 0 else " "
+        cursor_char = "_" if (self.blink_counter // 15) % 2 == 0 else " "
         
         for i, line in enumerate(visible):
             absolute_y = self.scroll_y + i
@@ -98,6 +107,12 @@ class UIEditor(UIBox):
 
         self.text = "\n".join(output_lines)
         return super().display(width, height)
+    
+    def set_text(self, text):
+        self.lines = text.splitlines() if text else [""]
+        self.cursor_x = 0
+        self.cursor_y = 0
+        self.scroll_y = 0
     
 
 class PyCodeText(UIBox):
@@ -182,24 +197,36 @@ class UIInput(Node):
         self.u = 0 # Your blink counter
 
     def handle_input(self, key):
-        if key in (127, 8, "\x7f"):
+        event = Event(key)
+        modified = False
+        if event.is_backspace:
             if self.idx > 0:
                 self.text = self.text[:self.idx-1] + self.text[self.idx:]
                 self.idx -= 1
-        elif key == Key.LEFT and self.idx > 0:
+                modified = True
+        elif event.is_left and self.idx > 0:
             self.idx -= 1
-        elif key == Key.RIGHT and self.idx < len(self.text):
+        elif event.is_right and self.idx < len(self.text):
             self.idx += 1
-        elif isinstance(key, str) and len(key) == 1:
-            self.text = self.text[:self.idx] + key + self.text[self.idx:]
+        elif event.is_char:
+            self.text = self.text[:self.idx] + event.char + self.text[self.idx:]
             self.idx += 1
+            modified = True
+            
+        if modified:
+            self.emit("change", self.text)
+
+    def set_text(self, text):
+        self.text = text
+        self.idx = len(text)
 
     def display(self, width, height):
             self.u += 1
             cursor = "_" if (self.u // 10) % 2 == 0 else " "
             
-            # Selection indicator
-            prefix = "● " if self.selected else "○ "
+            # Selection indicator from Theme
+            prefix = (Theme.selected if self.selected else Theme.unselected)
+            chars = Theme.focus_borders if self.selected else Theme.borders
             
             inner_w = max(0, width - 2 - len(self.label) - len(prefix))
             
@@ -216,8 +243,4 @@ class UIInput(Node):
             
             full_string = f"{prefix}{self.label}{before}{cursor}{after}"
             
-            # Curved borders
-            chars = {"tl": "╭", "tr": "╮", "bl": "╰", "br": "╯", "h": "─", "v": "│"}
-            
             return wrap(full_string, w=width, h=height, chars=chars, color=self.color)
-        

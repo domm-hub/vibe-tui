@@ -1,4 +1,5 @@
 from ..keyinput import Key
+from ..event.eventmanager import Event
 
 class FocusManager:
     def __init__(self, root_node):
@@ -78,16 +79,17 @@ class FocusManager:
         return self.focusable_nodes[self.index] if self.focusable_nodes else None
 
     def handle_input(self, key):
-        if key in Key.TAB:
+        event = Event(key)
+        if event.is_tab:
             self.next()
-        elif key in Key.BTAB:
+        elif event.is_btab:
             self.prev()
         elif self.current:
             if hasattr(self.current, 'handle_input'):
                 self.current.handle_input(key)
                 # Only refresh if the widget logic suggests a structural change
                 # (Keep this light to avoid focus-jump)
-            elif key in Key.ENTER + (" "):
+            elif event.is_enter or (event.is_char and event.char == " "):
                 if hasattr(self.current, 'press'):
                     self.current.press()
                     self.refresh_nodes()

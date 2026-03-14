@@ -1,1 +1,1 @@
-from .basenode import *
+from .basenode import Tab, Node
