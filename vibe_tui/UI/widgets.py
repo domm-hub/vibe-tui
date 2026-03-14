@@ -2,122 +2,11 @@ from ..node import Node, Tab
 from ..base import wrap
 from ..base.colors import Colors
 from ..layouts import UiContainerHorizontal, UiContainerVertical
+from .interactive import UIButton
+from .base_widgets import UIBox
 import re
 
-class UIBox(Node):
-    def __init__(self, weight, text, title="", focusable=True): 
-        super().__init__(weight=weight, focusable=focusable) 
-        self.text = text
-        self.title = title
-        self.selected = False 
-    
-    def display(self, width, height):
-        if self.focusable:
-            prefix = "● " if self.selected else "○ "
-        else:
-            prefix = ""
-        content = f"{prefix}{self.text}" if self.title else f"{prefix}{self.text}"
-        
-        # Color is applied to the content *before* wrapping to keep borders clean
-        if self.color:
-            content = self.color + content.replace('\n', Colors.RESET + '\n' + self.color) + Colors.RESET
-            
-        return wrap(content, w=width, h=height, title=self.title)
 
-class PyCodeText(UIBox):
-    def __init__(self, weight, text="", title=""):
-        super().__init__(weight=weight, text=text, title=title)
-        self.python_keywords = ([
-            # Control Flow
-            "if", "elif", "else", "for", "while", "break", "continue", "in",
-            
-            # Structure & Definitions
-            "class", "def", "return", "super", "pass", "lambda", "yield",
-            
-            # State & Logic
-            "True", "False", "None", "not", "and", "or", "is",
-            
-            # Organization & Safety
-            "import", "from", "as", "try", "except", "with", "del", "global"
-        ], "yellow")
-        
-        self.brackets = ([
-            "[", "]",
-            "{", "}",
-            "(", ")"
-        ], 'yellow')
-        self.symbols = ([
-            ":", ";",
-        ], 'white')
-
-        self.str = ([
-            '"', "'", 
-        ], 'green')
-        
-        self.comments = (["#"], 'blue')
-        
-    def set(self, text, cursor_idx):
-        # 1. We split while keeping the newlines intact
-        # This regex splits by spaces/tabs but remembers the structure
-        tokens = re.split(r'(\s+)', text)
-        
-        self.highlighted_text = ""
-        current_len = 0
-        
-        for token in tokens:
-            # Skip empty tokens from the split
-            if not token: continue
-            
-            # 2. Check if this token is a word or just whitespace
-            if token.strip():
-                # Get the base color
-                color = Colors.WHITE
-                if token in self.python_keywords[0]: color = self.python_keywords[1]
-                elif token in self.brackets[0]: color = self.brackets[1]
-                elif token in self.symbols[0]: color = self.symbols[1]
-                elif token.startswith("#"): color = self.comments[1]
-                
-                ansi_color = getattr(Colors, color.upper(), Colors.WHITE)
-                
-                # 3. Add Cursor logic: 
-                # If the cursor index falls within this word, underline it
-                word_end = current_len + len(token)
-                if current_len <= cursor_idx < word_end:
-                    self.highlighted_text += f"{ansi_color}{Colors.UNDERLINE}{token}{Colors.RESET} "
-                else:
-                    self.highlighted_text += f"{ansi_color}{token}{Colors.RESET}"
-                
-                current_len += len(token)
-            else:
-                # Keep the original whitespace (newlines/tabs)
-                self.highlighted_text += token
-                current_len += len(token)
-                
-
-        self.text = f"{self.highlighted_text}"
-        
-    def display(self, width, height):
-        # 1. Determine the correct prefix based on FocusManager state
-        pr = "● " if self.selected else "○ "
-        
-        # 2. Clean the text of any existing icons to prevent "● ○ ● ○ Code"
-        clean_text = self.text.lstrip("● ").lstrip("○ ")
-        
-        # 3. Combine them for the wrap function
-        # Note: Avoid \n here unless you want the code to start on the second line
-        display_text = f"{pr}\n{clean_text}"
-        
-        return wrap(display_text + "_", w=width, h=height, title=self.title, title_pos="center")
-    
-    def handle_input(self, key):
-        if key == "KEY_BACKSPACE":
-            # Delete the last character
-            self.text = self.text[:-1]
-        elif key == "KEY_UP":
-            self.scroll_y = max(0, self.scroll_y - 1)
-        elif key == "KEY_DOWN":
-            self.scroll_y += 1
-            
         
 class UILabel(UIBox):
     def __init__(self, weight, text):
@@ -176,67 +65,6 @@ class ColorPicker(Node):
         # ColorPicker content already has ANSI codes, so just wrap it
         return wrap(content, width, height)
 
-class UIButton(UIBox):
-    def __init__(self, weight, text, title="", onclick=None, focusable=True):
-        super().__init__(weight, text, title, focusable=focusable)
-        self.onclick = onclick
-        self.is_pressed = False 
-    
-    def display(self, width, height):
-        # Use curved borders always, no bold
-        chars = {"tl": "╭", "tr": "╮", "bl": "╰", "br": "╯", "h": "─", "v": "│"}
-        
-        if self.is_pressed:
-            prefix = "  "
-        else:
-            prefix = "● " if self.selected else "○ "
-            
-        content = f"{prefix}{self.text}" if self.title else f"{prefix}{self.text}"
-        
-        if self.color:
-            content = self.color + content.replace('\n', Colors.RESET + '\n' + self.color) + Colors.RESET
-
-        return wrap(content, w=width, h=height, chars=chars, title=self.title)
-    
-    def press(self):
-        if self.selected:
-            self.is_pressed = True
-            if self.onclick: self.onclick()
-
-    def release(self):
-        self.is_pressed = False
-        
-class UICheckbox(UIBox):
-    def __init__(self, weight, text, title="", on_toggle=None, default_state=False):
-        super().__init__(weight, text, title)
-        self.on_toggle = on_toggle
-        self.checked = default_state # Tracks the boolean state
-    
-    def display(self, width, height):
-        # Curved borders
-        chars = {"tl": "╭", "tr": "╮", "bl": "╰", "br": "╯", "h": "─", "v": "│"}
-        
-        # Checkbox visual
-        prefix = "[X] " if self.checked else "[ ] "
-        if self.selected:
-            prefix = "● " + prefix
-        else:
-            prefix = "○ " + prefix
-            
-        content = f"{prefix}{self.text}" if self.title else f"{prefix}{self.text}"
-        
-        if self.color:
-            content = self.color + content.replace('\n', Colors.RESET + '\n' + self.color) + Colors.RESET
-
-        return wrap(content, w=width, h=height, chars=chars, title=self.title)
-    
-    def press(self):
-        # Toggle state on press
-        if self.selected:
-            self.checked = not self.checked
-            if self.on_toggle: 
-                self.on_toggle(self.checked) # Pass the new state to the callback
-                
                 
 class UISelect(UIBox):
     def __init__(self, weight, options=None, title=""):
@@ -302,54 +130,6 @@ class UISelect(UIBox):
 
         return wrap(final_text, w=width, h=height, chars=chars, title=self.title)
     
-class UIInput(Node):
-    def __init__(self, weight, label=" URL: ", initial_text=""):
-        super().__init__(weight=weight, focusable=True)
-        self.label = label
-        self.text = initial_text
-        self.idx = len(initial_text) # The "Insertion Point"
-        self.u = 0 # Your blink counter
-
-    def handle_input(self, key):
-        if key in (127, 8, "\x7f"):
-            if self.idx > 0:
-                self.text = self.text[:self.idx-1] + self.text[self.idx:]
-                self.idx -= 1
-        elif key == "KEY_LEFT" and self.idx > 0:
-            self.idx -= 1
-        elif key == "KEY_RIGHT" and self.idx < len(self.text):
-            self.idx += 1
-        elif isinstance(key, str) and len(key) == 1:
-            self.text = self.text[:self.idx] + key + self.text[self.idx:]
-            self.idx += 1
-
-    def display(self, width, height):
-            self.u += 1
-            cursor = "_" if (self.u // 10) % 2 == 0 else " "
-            
-            # Selection indicator
-            prefix = "● " if self.selected else "○ "
-            
-            inner_w = max(0, width - 2 - len(self.label) - len(prefix))
-            
-            if self.idx < inner_w:
-                start = 0
-            else:
-                start = self.idx - inner_w + 1
-                
-            visible_text = self.text[start:]
-            adj_idx = self.idx - start 
-            
-            before = visible_text[:adj_idx]
-            after = visible_text[adj_idx+1:]
-            
-            full_string = f"{prefix}{self.label}{before}{cursor}{after}"
-            
-            # Curved borders
-            chars = {"tl": "╭", "tr": "╮", "bl": "╰", "br": "╯", "h": "─", "v": "│"}
-            
-            return wrap(full_string, w=width, h=height, chars=chars, color=self.color)
-        
 
 class TabManagerH(UiContainerHorizontal):
     def __init__(self, tabs: list[Tab], weight):
