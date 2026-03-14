@@ -80,7 +80,7 @@ class FocusManager:
     def handle_input(self, key):
         if key in Key.TAB:
             self.next()
-        elif key == Key.BTAB:
+        elif key in Key.BTAB:
             self.prev()
         elif self.current:
             if hasattr(self.current, 'handle_input'):
