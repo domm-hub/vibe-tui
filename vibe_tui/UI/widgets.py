@@ -92,11 +92,31 @@ class PyCodeText(UIBox):
                 # Keep the original whitespace (newlines/tabs)
                 self.highlighted_text += token
                 current_len += len(token)
-        
-        self.text = self.highlighted_text
+                
+
+        self.text = f"{self.highlighted_text}"
         
     def display(self, width, height):
-        return wrap(self.text, w=width, h=height, title=self.title, title_pos="center")
+        # 1. Determine the correct prefix based on FocusManager state
+        pr = "● " if self.selected else "○ "
+        
+        # 2. Clean the text of any existing icons to prevent "● ○ ● ○ Code"
+        clean_text = self.text.lstrip("● ").lstrip("○ ")
+        
+        # 3. Combine them for the wrap function
+        # Note: Avoid \n here unless you want the code to start on the second line
+        display_text = f"{pr}\n{clean_text}"
+        
+        return wrap(display_text + "_", w=width, h=height, title=self.title, title_pos="center")
+    
+    def handle_input(self, key):
+        if key == "KEY_BACKSPACE":
+            # Delete the last character
+            self.text = self.text[:-1]
+        elif key == "KEY_UP":
+            self.scroll_y = max(0, self.scroll_y - 1)
+        elif key == "KEY_DOWN":
+            self.scroll_y += 1
             
         
 class UILabel(UIBox):
@@ -157,18 +177,18 @@ class ColorPicker(Node):
         return wrap(content, width, height)
 
 class UIButton(UIBox):
-    def __init__(self, weight, text, title="", onclick=None):
-        super().__init__(weight, text, title)
+    def __init__(self, weight, text, title="", onclick=None, focusable=True):
+        super().__init__(weight, text, title, focusable=focusable)
         self.onclick = onclick
         self.is_pressed = False 
     
     def display(self, width, height):
-        # Tactile border transition
+        # Use curved borders always, no bold
+        chars = {"tl": "╭", "tr": "╮", "bl": "╰", "br": "╯", "h": "─", "v": "│"}
+        
         if self.is_pressed:
-            chars = {"tl": "┌", "tr": "┐", "bl": "└", "br": "┘", "h": "─", "v": "│"}
             prefix = "  "
         else:
-            chars = {"tl": "┏", "tr": "┓", "bl": "┗", "br": "┛", "h": "━", "v": "┃"}
             prefix = "● " if self.selected else "○ "
             
         content = f"{prefix}{self.text}" if self.title else f"{prefix}{self.text}"
@@ -193,19 +213,18 @@ class UICheckbox(UIBox):
         self.checked = default_state # Tracks the boolean state
     
     def display(self, width, height):
-        # Base borders
-        chars = {"tl": "┌", "tr": "┐", "bl": "└", "br": "┘", "h": "─", "v": "│"}
+        # Curved borders
+        chars = {"tl": "╭", "tr": "╮", "bl": "╰", "br": "╯", "h": "─", "v": "│"}
         
-        # Highlight border if selected (optional UI polish)
-        if self.selected:
-            chars = {"tl": "┏", "tr": "┓", "bl": "┗", "br": "┛", "h": "━", "v": "┃"}
-
         # Checkbox visual
         prefix = "[X] " if self.checked else "[ ] "
+        if self.selected:
+            prefix = "● " + prefix
+        else:
+            prefix = "○ " + prefix
             
         content = f"{prefix}{self.text}" if self.title else f"{prefix}{self.text}"
         
-        # Apply colors (maybe make the [X] green if checked?)
         if self.color:
             content = self.color + content.replace('\n', Colors.RESET + '\n' + self.color) + Colors.RESET
 
@@ -226,12 +245,6 @@ class UISelect(UIBox):
         self.selection = 0    # The currently highlighted item index
         self.scroll_l = 0     # The index of the top-most visible item (scroll offset)
     
-    def __init__(self, weight, options=None, title=""):
-        super().__init__(weight=weight, text="", title=title)
-        self.options = options if options is not None else ["Option 1", "Option 2", "Option 3"]
-        self.selection = 0
-        self.scroll_l = 0
-    
     def handle_input(self, key):
         if not self.options: return
         if key == "KEY_UP" and self.selection > 0:
@@ -241,7 +254,6 @@ class UISelect(UIBox):
                 
         elif key == "KEY_DOWN" and self.selection < len(self.options) - 1:
             self.selection += 1
-            # Scroll down logic is handled dynamically in display()
 
     def get_selected_item(self):
         if not self.options: return None
@@ -255,43 +267,36 @@ class UISelect(UIBox):
             
         available_lines = max(1, available_lines)
 
-        # Adjust scrolling if selection moved past the bottom visible edge
+        # Adjust scrolling
         if self.selection >= self.scroll_l + available_lines:
             self.scroll_l = self.selection - available_lines + 1
-        # Adjust scrolling if selection moved above the top visible edge
         elif self.selection < self.scroll_l:
             self.scroll_l = self.selection
 
-        # Slice the options to only what is visible
+        # Slice the options
         visible_options = self.options[self.scroll_l : self.scroll_l + available_lines]
         
         # Build the text content
         res = []
+        # Focus indicator for the whole widget
+        widget_prefix = "● " if self.selected else "○ "
+        res.append(widget_prefix)
+
         for i, option_text in enumerate(visible_options):
             absolute_index = self.scroll_l + i 
-            
             if absolute_index == self.selection:
-                # FIX: Use Colors.YELLOW and Colors.RESET directly!
-                line = f"> {Colors.YELLOW}{option_text}{Colors.RESET}"
+                line = f"  > {Colors.YELLOW}{option_text}{Colors.RESET}"
             else:
-                line = f"  {option_text}"
-            
+                line = f"    {option_text}"
             res.append(line)
 
         content = "\n".join(res)
         
-        # Determine border style based on focus
-        if self.selected:
-            chars = {"tl": "┏", "tr": "┓", "bl": "┗", "br": "┛", "h": "━", "v": "┃"}
-        else:
-            chars = {"tl": "┌", "tr": "┐", "bl": "└", "br": "┘", "h": "─", "v": "│"}
+        # Curved borders
+        chars = {"tl": "╭", "tr": "╮", "bl": "╰", "br": "╯", "h": "─", "v": "│"}
         
-        if self.title:
-            final_text = f"{content}"
-        else:
-            final_text = content
+        final_text = content
 
-        # Apply global container color if set
         if self.color:
              final_text = self.color + final_text.replace('\n', Colors.RESET + '\n' + self.color) + Colors.RESET
 
@@ -306,32 +311,26 @@ class UIInput(Node):
         self.u = 0 # Your blink counter
 
     def handle_input(self, key):
-        """
-        Call this with the character or key code from your main loop.
-        """
-        # 1. Handle Backspace (127 is the standard for many terminals)
         if key in (127, 8, "\x7f"):
             if self.idx > 0:
-                # Slice out the character BEFORE the index
                 self.text = self.text[:self.idx-1] + self.text[self.idx:]
                 self.idx -= 1
-        
-        # 2. Handle Arrow Keys (Mapping varies by TUI, usually these codes)
         elif key == "KEY_LEFT" and self.idx > 0:
             self.idx -= 1
         elif key == "KEY_RIGHT" and self.idx < len(self.text):
             self.idx += 1
-            
-        # 3. Handle Regular Typing
         elif isinstance(key, str) and len(key) == 1:
-            # Insert the character EXACTLY where the cursor is
             self.text = self.text[:self.idx] + key + self.text[self.idx:]
             self.idx += 1
 
     def display(self, width, height):
             self.u += 1
             cursor = "_" if (self.u // 10) % 2 == 0 else " "
-            inner_w = max(0, width - 2 - len(self.label))
+            
+            # Selection indicator
+            prefix = "● " if self.selected else "○ "
+            
+            inner_w = max(0, width - 2 - len(self.label) - len(prefix))
             
             if self.idx < inner_w:
                 start = 0
@@ -342,13 +341,14 @@ class UIInput(Node):
             adj_idx = self.idx - start 
             
             before = visible_text[:adj_idx]
-
-            at_cursor = visible_text[adj_idx] if adj_idx < len(visible_text) else " "
             after = visible_text[adj_idx+1:]
             
-            full_string = f"{self.label}{before}{cursor}{after}"
+            full_string = f"{prefix}{self.label}{before}{cursor}{after}"
             
-            return wrap(full_string, w=width, h=height, color=self.color)
+            # Curved borders
+            chars = {"tl": "╭", "tr": "╮", "bl": "╰", "br": "╯", "h": "─", "v": "│"}
+            
+            return wrap(full_string, w=width, h=height, chars=chars, color=self.color)
         
 
 class TabManagerH(UiContainerHorizontal):
@@ -356,15 +356,27 @@ class TabManagerH(UiContainerHorizontal):
         super().__init__(weight)
         self.tabs = tabs
         self.active_index = 0
+        self.focusable = True
         self._rebuild_nodes()
 
+    def handle_input(self, key):
+        if key == "KEY_LEFT":
+            self.set_active((self.active_index - 1) % len(self.tabs))
+        elif key == "KEY_RIGHT":
+            self.set_active((self.active_index + 1) % len(self.tabs))
+
     def _rebuild_nodes(self):
+        """
+        Creates the UIButton instances for each tab.
+        Set focusable=False so FocusManager ignores them.
+        """
         self.reset()
         for i, tab in enumerate(self.tabs):
-            btn = UIBox(1, tab.title)
-            btn.selected = (i == self.active_index and self.selected)
-            if i == self.active_index and self.color:
-                btn.color = self.color
+            def create_click_handler(idx):
+                return lambda: self.set_active(idx)
+            
+            # Tabs are managed separately (e.g. via arrows), so we hide them from FocusManager
+            btn = UIButton(1, tab.title, onclick=create_click_handler(i), focusable=False)
             self.add(btn)
 
     def add_tab(self, tab: Tab):
@@ -378,19 +390,80 @@ class TabManagerH(UiContainerHorizontal):
             self._rebuild_nodes()
 
     def set_active(self, index):
+        """Sets which tab's content is currently displayed."""
         if 0 <= index < len(self.tabs):
             self.active_index = index
-            self._rebuild_nodes()
 
     def get_active_content(self):
         return self.tabs[self.active_index].content
 
     def display(self, width, height):
-        self._rebuild_nodes()
+        for i, node in enumerate(self.nodes):
+            if i == self.active_index:
+                if not node.selected:
+                    node.selected = True
+
+            else:
+                node.selected = False
+                
         return super().display(width, height)
 
-
 class UIScrollText(Node):
+    def __init__(self, weight, text="", title="", show_line_numbers=False):
+        super().__init__(weight=weight, focusable=True)
+        self.text = text
+        self.title = title
+        self.show_line_numbers = show_line_numbers
+        self.scroll_y = 0 
+        self._lines = text.splitlines()
+
+    def set_text(self, new_text):
+        self.text = new_text
+        self._lines = new_text.splitlines()
+        self.scroll_y = 0
+
+    def handle_input(self, key):
+        if not self._lines: return
+        if key == "KEY_UP" and self.scroll_y > 0:
+            self.scroll_y -= 1
+        elif key == "KEY_DOWN" and self.scroll_y < len(self._lines) - 1:
+            self.scroll_y += 1
+
+    def display(self, width, height):
+        inner_h = max(0, height - 2)
+        if self.title:
+            inner_h -= 1 
+
+        max_scroll = max(0, len(self._lines) - inner_h)
+        self.scroll_y = min(self.scroll_y, max_scroll)
+        
+        visible_lines = self._lines[self.scroll_y : self.scroll_y + inner_h]
+        
+        # Selection indicator
+        prefix = "● " if self.selected else "○ "
+        
+        formatted_lines = []
+        if self.show_line_numbers:
+            pad_len = len(str(len(self._lines))) 
+            for i, line in enumerate(visible_lines):
+                actual_line_num = self.scroll_y + i + 1
+                num_str = f"{actual_line_num:>{pad_len}} | "
+                formatted_lines.append(f"{Colors.YELLOW}{num_str}{Colors.RESET}{line}")
+        else:
+            formatted_lines = visible_lines
+
+        content_to_wrap = "\n".join([prefix + line for line in formatted_lines]) if formatted_lines else prefix
+        
+        display_title = self.title
+        if max_scroll > 0:
+            percent = int((self.scroll_y / max_scroll) * 100) if max_scroll > 0 else 100
+            scroll_indicator = f" {percent}% ↓ " if percent < 100 else " Bot "
+            display_title = f"{self.title} {scroll_indicator}"
+
+        # Curved borders always
+        chars = {"tl": "╭", "tr": "╮", "bl": "╰", "br": "╯", "h": "─", "v": "│"}
+
+        return wrap(content_to_wrap, w=width, h=height, chars=chars, title=display_title, title_pos="center")
     def __init__(self, weight, text="", title="", show_line_numbers=False):
         super().__init__(weight=weight, focusable=True)
         self.text = text

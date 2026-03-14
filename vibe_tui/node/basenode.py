@@ -13,3 +13,4 @@ class Tab:
     def __init__(self, title, content_node: Node):
         self.title = title
         self.content: Node = content_node
+        self.selected = False
