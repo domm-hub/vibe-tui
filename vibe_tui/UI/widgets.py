@@ -176,10 +176,16 @@ class TabManagerH(UiContainerHorizontal):
 
     def handle_input(self, key):
         event = Event(key)
+        modified = False
         if event.is_left:
             self.set_active((self.active_index - 1) % len(self.tabs))
+            modified = True
         elif event.is_right:
             self.set_active((self.active_index + 1) % len(self.tabs))
+            modified = True
+            
+        if modified:
+            self.emit("change", self.active_index)
 
     def _rebuild_nodes(self):
         """

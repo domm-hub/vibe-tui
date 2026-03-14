@@ -87,8 +87,9 @@ class FocusManager:
         elif self.current:
             if hasattr(self.current, 'handle_input'):
                 self.current.handle_input(key)
-                # Only refresh if the widget logic suggests a structural change
-                # (Keep this light to avoid focus-jump)
+                # If the widget is a TabManager, switching tabs changes the focusable tree
+                if hasattr(self.current, 'get_active_content'):
+                    self.refresh_nodes()
             elif event.is_enter or (event.is_char and event.char == " "):
                 if hasattr(self.current, 'press'):
                     self.current.press()
