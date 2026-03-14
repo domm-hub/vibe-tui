@@ -1,5 +1,5 @@
 class Node:
-    def __init__(self, weight=1, focusable=True):
+    def __init__(self, weight=1, focusable=True, **kwargs):
         self.weight = weight
         self.selected = False
         self.color = "" # Stores an ANSI color code

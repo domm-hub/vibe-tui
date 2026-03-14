@@ -7,9 +7,11 @@
 !/README.md
 !/pyproject.toml
 !/LICENSE
+!/architecture.svg
 
 # 3. Standard Python ignores (for inside the tracked folders)
 __pycache__/
+*pycache*
 *.py[cod]
 *$py.class
 

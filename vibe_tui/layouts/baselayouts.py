@@ -10,6 +10,12 @@ class UiContainerHorizontal(Node):
         self.nodes.append(node)
         return self
 
+    def set_vibe(self, **kwargs):
+        """Sets multiple attributes and returns self for easy chaining."""
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+        return self
+
     def display(self, width, height):
         if not self.nodes: return [" " * width for _ in range(height)]
         
@@ -45,6 +51,12 @@ class UiContainerVertical(Node):
         self.nodes.append(node)
         return self
 
+    def set_vibe(self, **kwargs):
+        """Sets multiple attributes and returns self for easy chaining."""
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+        return self
+    
     def display(self, width, height):
         if not self.nodes: return [" " * width for _ in range(height)]
         

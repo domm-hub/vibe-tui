@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="814">
+    <rect width="100%" height="100%" fill="#0d1117" rx="8"/>
+    <foreignObject x="20" y="20" width="900" height="814">
+        <div xmlns="http://www.w3.org/1999/xhtml" style="color: #c9d1d9; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; white-space: pre; font-size: 13px; line-height: 22px;">.
+├── <span style="color: #00ffff; text-decoration: underline;">vibe_tui.UI.base_widgets</span>
+│   └── <span style="color: #ffffff; font-weight: bold;">UIBox</span> <span style="color: #ff00ff;">(Node)</span>
+│          <span style="color: #ffff00;">[weight, text, title='', focusable=True]</span>
+├── <span style="color: #00ffff; text-decoration: underline;">vibe_tui.UI.interactive.clickable</span>
+│   ├── <span style="color: #ffffff; font-weight: bold;">UIButton</span> <span style="color: #ff00ff;">(UIBox)</span>
+│   │      <span style="color: #ffff00;">[weight, text, title='', onclick=None, focusable=True]</span>
+│   └── <span style="color: #ffffff; font-weight: bold;">UICheckbox</span> <span style="color: #ff00ff;">(UIBox)</span>
+│          <span style="color: #ffff00;">[weight, text, title='', on_toggle=None, default_state=False]</span>
+├── <span style="color: #00ffff; text-decoration: underline;">vibe_tui.UI.interactive.textinput</span>
+│   ├── <span style="color: #ffffff; font-weight: bold;">PyCodeText</span> <span style="color: #ff00ff;">(UIBox)</span>
+│   │      <span style="color: #ffff00;">[weight, text='', title='']</span>
+│   ├── <span style="color: #ffffff; font-weight: bold;">UIEditor</span> <span style="color: #ff00ff;">(UIBox)</span>
+│   │      <span style="color: #ffff00;">[weight, text='', title=' EDITOR ']</span>
+│   └── <span style="color: #ffffff; font-weight: bold;">UIInput</span> <span style="color: #ff00ff;">(Node)</span>
+│          <span style="color: #ffff00;">[weight, label=' URL: ', initial_text='']</span>
+├── <span style="color: #00ffff; text-decoration: underline;">vibe_tui.UI.widgets</span>
+│   ├── <span style="color: #ffffff; font-weight: bold;">UIBar</span> <span style="color: #ff00ff;">(UIBox, Loading)</span>
+│   │      <span style="color: #ffff00;">[weight, finish, label='CHILLING', **kwargs_l]</span>
+│   ├── <span style="color: #ffffff; font-weight: bold;">UILabel</span> <span style="color: #ff00ff;">(UIBox)</span>
+│   │      <span style="color: #ffff00;">[weight, text]</span>
+│   ├── <span style="color: #ffffff; font-weight: bold;">UIModal</span> <span style="color: #ff00ff;">(Node)</span>
+│   │      <span style="color: #ffff00;">[width_pct=0.5, height_pct=0.5, title='[ Modal ]', text='']</span>
+│   ├── <span style="color: #ffffff; font-weight: bold;">UIScrollText</span> <span style="color: #ff00ff;">(Node)</span>
+│   │      <span style="color: #ffff00;">[weight, text='', title='', show_line_numbers=False]</span>
+│   └── <span style="color: #ffffff; font-weight: bold;">UISelect</span> <span style="color: #ff00ff;">(UIBox)</span>
+│          <span style="color: #ffff00;">[weight, options=None, title='']</span>
+├── <span style="color: #00ffff; text-decoration: underline;">vibe_tui.layouts.baselayouts</span>
+│   ├── <span style="color: #ffffff; font-weight: bold;">UiContainerHorizontal</span> <span style="color: #ff00ff;">(Node)</span>
+│   │      <span style="color: #ffff00;">[weight=1]</span>
+│   └── <span style="color: #ffffff; font-weight: bold;">UiContainerVertical</span> <span style="color: #ff00ff;">(Node)</span>
+│          <span style="color: #ffff00;">[weight=1]</span>
+└── <span style="color: #00ffff; text-decoration: underline;">vibe_tui.managers.manager</span>
+    └── <span style="color: #ffffff; font-weight: bold;">FocusManager</span> <span style="color: #ff00ff;"></span>
+           <span style="color: #ffff00;">[root_node]</span>
+        </div>
+    </foreignObject>
+</svg>

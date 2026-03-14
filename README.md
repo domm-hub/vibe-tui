@@ -2,6 +2,9 @@
 
 A TUI library based in pure python that uses weighting to align your program perfectly.
 
+![Version](https://img.shields.io/badge/version-0.3.0--Beta-orange)
+![Creator](https://img.shields.io/badge/creator-Adam%20Hany-blue)
+
 ### Why should I use this?
 - No `asyncio`: Do what you want and manage as you like and display when you're finished; no rush here!
 - Weight based alignment: Remove the hassle of calculating widths and heights to the weight system! (I don't see hackers need to be game devs to make good TUIs)
@@ -25,4 +28,36 @@ A TUI library based in pure python that uses weighting to align your program per
 
 You can also use `FocusManager` to manage Node focus.
 
-Made with **time?** by **Adam Hany**
+### File Structure:
+```
+.
+├── README.md
+└── vibe_tui
+    ├── UI
+    │   ├── __init__.py
+    │   ├── base_widgets.py
+    │   ├── interactive
+    │   │   ├── __init__.py
+    │   │   ├── clickable.py
+    │   │   └── textinput.py
+    │   └── widgets.py
+    ├── __init__.py
+    ├── base
+    │   ├── __init__.py
+    │   ├── basic.py
+    │   └── colors.py
+    ├── layouts
+    │   ├── __init__.py
+    │   └── baselayouts.py
+    ├── managers
+    │   ├── __init__.py
+    │   └── manager.py
+    └── node
+        ├── __init__.py
+        └── basenode.py
+```
+
+### Class structure:
+![class](architecture.svg)
+
+Made with **time** and `code` by **Adam Hany**

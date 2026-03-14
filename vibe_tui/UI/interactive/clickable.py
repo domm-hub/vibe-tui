@@ -11,12 +11,22 @@ class UIButton(UIBox):
     
     def display(self, width, height):
         # Use curved borders always, no bold
-        chars = {"tl": "╭", "tr": "╮", "bl": "╰", "br": "╯", "h": "─", "v": "│"}
         
         if self.is_pressed:
-            prefix = "  "
+            chars = {
+                "tl": "┏", 
+                "tr": "┓", 
+                "bl": "┗", 
+                "br": "┛", 
+                "h": "━", 
+                "v": "┃"
+            }
         else:
-            prefix = "● " if self.selected else "○ "
+            chars = {"tl": "╭", "tr": "╮", "bl": "╰", "br": "╯", "h": "─", "v": "│"}
+        
+        
+
+        prefix = "● " if self.selected else "○ "
             
         content = f"{prefix}{self.text}" if self.title else f"{prefix}{self.text}"
         
@@ -27,20 +37,12 @@ class UIButton(UIBox):
     
     def press(self):
         if self.selected:
-            self.is_pressed = True
-            chars = {
-                "tl": "┏", 
-                "tr": "┓", 
-                "bl": "┗", 
-                "br": "┛", 
-                "h": "━", 
-                "v": "┃"
-            }
+            if not self.is_pressed:
+                self.is_pressed = True
+            else:
+                self.is_pressed = False
             if self.onclick: self.onclick()
-
-    def release(self):
-        chars = {"tl": "╭", "tr": "╮", "bl": "╰", "br": "╯", "h": "─", "v": "│"}
-        self.is_pressed = False
+            
         
 class UICheckbox(UIBox):
     def __init__(self, weight, text, title="", on_toggle=None, default_state=False):

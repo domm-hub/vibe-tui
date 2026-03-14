@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vibe-tui"
+version = "0.3.0"
+authors = [
+  { name = "Adam Hany (Domy)" },
+]
+description = "A sophisticated, layered TUI framework with weight-based layouts and focus management."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "wcwidth"
+]
+
+[project.optional-dependencies]
+loader = ["vibe-load>=1.7.0"]
+
+[project.urls]
+"Homepage" = "https://github.com/domm-hub/vibe-tui"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["vibe_tui*"]
