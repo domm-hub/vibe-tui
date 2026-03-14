@@ -4,6 +4,7 @@ from ...node import Node
 from ...layouts import UiContainerHorizontal, UiContainerVertical
 import re
 from ..base_widgets import UIBox
+from ...keyinput import Key
 
 class UIEditor(UIBox):
     def __init__(self, weight, text="", title=" EDITOR "):
@@ -17,31 +18,31 @@ class UIEditor(UIBox):
     def handle_input(self, key):
         self.blink_counter = 0 # Reset blink on activity
         
-        if key == "KEY_UP":
+        if key in Key.UP:
             if self.cursor_y > 0:
                 self.cursor_y -= 1
                 self.cursor_x = min(self.cursor_x, len(self.lines[self.cursor_y]))
         
-        elif key == "KEY_DOWN":
+        elif key in Key.DOWN:
             if self.cursor_y < len(self.lines) - 1:
                 self.cursor_y += 1
                 self.cursor_x = min(self.cursor_x, len(self.lines[self.cursor_y]))
         
-        elif key == "KEY_LEFT":
+        elif key in Key.LEFT:
             if self.cursor_x > 0:
                 self.cursor_x -= 1
             elif self.cursor_y > 0:
                 self.cursor_y -= 1
                 self.cursor_x = len(self.lines[self.cursor_y])
         
-        elif key == "KEY_RIGHT":
+        elif key in Key.RIGHT:
             if self.cursor_x < len(self.lines[self.cursor_y]):
                 self.cursor_x += 1
             elif self.cursor_y < len(self.lines) - 1:
                 self.cursor_y += 1
                 self.cursor_x = 0
 
-        elif key == "KEY_BACKSPACE":
+        elif key in Key.BACKSPACE:
             if self.cursor_x > 0:
                 line = self.lines[self.cursor_y]
                 self.lines[self.cursor_y] = line[:self.cursor_x-1] + line[self.cursor_x:]
@@ -53,7 +54,7 @@ class UIEditor(UIBox):
                 self.cursor_y -= 1
                 self.cursor_x = prev_len
 
-        elif key == "KEY_ENTER":
+        elif key == Key.ENTER:
             # Split line at cursor
             line = self.lines[self.cursor_y]
             self.lines[self.cursor_y] = line[:self.cursor_x]
@@ -185,9 +186,9 @@ class UIInput(Node):
             if self.idx > 0:
                 self.text = self.text[:self.idx-1] + self.text[self.idx:]
                 self.idx -= 1
-        elif key == "KEY_LEFT" and self.idx > 0:
+        elif key == Key.LEFT and self.idx > 0:
             self.idx -= 1
-        elif key == "KEY_RIGHT" and self.idx < len(self.text):
+        elif key == Key.RIGHT and self.idx < len(self.text):
             self.idx += 1
         elif isinstance(key, str) and len(key) == 1:
             self.text = self.text[:self.idx] + key + self.text[self.idx:]

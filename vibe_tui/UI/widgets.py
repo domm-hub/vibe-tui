@@ -4,6 +4,7 @@ from ..base.colors import Colors
 from ..layouts import UiContainerHorizontal, UiContainerVertical
 from .interactive import UIButton
 from .base_widgets import UIBox
+from ..keyinput import Key
 import re
 
 
@@ -86,12 +87,12 @@ class UISelect(UIBox):
     
     def handle_input(self, key):
         if not self.options: return
-        if key == "KEY_UP" and self.selection > 0:
+        if key in Key.UP and self.selection > 0:
             self.selection -= 1
             if self.selection < self.scroll_l:
                 self.scroll_l = self.selection
                 
-        elif key == "KEY_DOWN" and self.selection < len(self.options) - 1:
+        elif key in Key.DOWN and self.selection < len(self.options) - 1:
             self.selection += 1
 
     def get_selected_item(self):
@@ -151,9 +152,9 @@ class TabManagerH(UiContainerHorizontal):
         self._rebuild_nodes()
 
     def handle_input(self, key):
-        if key == "KEY_LEFT":
+        if key in Key.LEFT:
             self.set_active((self.active_index - 1) % len(self.tabs))
-        elif key == "KEY_RIGHT":
+        elif key in Key.RIGHT:
             self.set_active((self.active_index + 1) % len(self.tabs))
 
     def _rebuild_nodes(self):
@@ -215,9 +216,9 @@ class UIScrollText(Node):
 
     def handle_input(self, key):
         if not self._lines: return
-        if key == "KEY_UP" and self.scroll_y > 0:
+        if key in Key.UP and self.scroll_y > 0:
             self.scroll_y -= 1
-        elif key == "KEY_DOWN" and self.scroll_y < len(self._lines) - 1:
+        elif key in Key.DOWN and self.scroll_y < len(self._lines) - 1:
             self.scroll_y += 1
 
     def display(self, width, height):
@@ -275,10 +276,10 @@ class UIScrollText(Node):
         """Allows the user to scroll through the text when focused."""
         if not self._lines: return
 
-        if key == "KEY_UP" and self.scroll_y > 0:
+        if key in Key.UP and self.scroll_y > 0:
             self.scroll_y -= 1
             
-        elif key == "KEY_DOWN":
+        elif key in Key.DOWN:
             # We don't know the exact height here, so we cap it loosely.
             # The display() function will clamp it perfectly later.
             if self.scroll_y < len(self._lines) - 1:
