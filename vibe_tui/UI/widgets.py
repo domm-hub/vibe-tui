@@ -215,12 +215,8 @@ class TabManagerH(UiContainerHorizontal):
 
     def display(self, width, height):
         for i, node in enumerate(self.nodes):
-            if i == self.active_index:
-                if not node.selected:
-                    node.selected = True
-
-            else:
-                node.selected = False
+            # A child button is "visually selected" ONLY if the manager is selected AND it's the active index
+            node.selected = (self.selected and i == self.active_index)
                 
         return super().display(width, height)
 
