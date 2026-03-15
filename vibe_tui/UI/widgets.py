@@ -8,6 +8,7 @@ from ..keyinput import Key
 from ..event.eventmanager import Event
 from ..base.theme import Theme
 import re
+import time
 
 
         
@@ -26,9 +27,10 @@ try:
     from vibe_load import Loading
     
     class UIBar(UIBox, Loading):
-        def __init__(self, weight, finish, label="CHILLING", **kwargs_l):
+        def __init__(self, weight, finish, label="CHILLING", focusable=False, **kwargs_l):
             # 1. Initialize UIBox for the TUI layout and borders
             # We pass an empty string for text because Loading will generate it later
+            self.focusable = focusable
             UIBox.__init__(self, weight=weight, text="", title=label)
             
             # 2. Initialize Loading for the progress engine logic
@@ -352,5 +354,57 @@ class UIModal(Node):
                 # Stitch it together: Left BG + Modal Line + Right BG
                 # Note: We append Colors.RESET at the end to prevent modal colors bleeding into the right BG
                 new_screen[buffer_y] = f"{left_part}{modal_line}{Colors.RESET}{right_part}"
+
+        return new_screen
+    
+class UIToast(Node):
+    def __init__(self, text="", duration=3, color=Colors.CYAN):
+        super().__init__(weight=1, focusable=False)
+        self.text = text
+        self.duration = duration
+        self.start_time = None
+        self.is_active = False
+        self.color = color
+
+    def show(self, text=None):
+        if text: self.text = text
+        self.start_time = time.time()
+        self.is_active = True
+
+    def display_over(self, screen_buffer, term_width, term_height):
+        if not self.is_active:
+            return screen_buffer
+
+        if time.time() - self.start_time > self.duration:
+            self.is_active = False
+            return screen_buffer
+
+        # Calculate dimensions (padding + text)
+        toast_w = len(self.text) + 4
+        toast_h = 3
+        
+        # Position: Bottom Right
+        start_x = term_width - toast_w - 2
+        start_y = term_height - toast_h - 1
+
+        toast_content = wrap(
+            f"{self.color}{self.text}{Colors.RESET}", 
+            w=toast_w, 
+            h=toast_h, 
+            chars=Theme.borders
+        )
+
+        new_screen = list(screen_buffer)
+        ansi_regex = re.compile(r'\x1b\[[0-?]*[ -/]*[@-~]')
+        
+        for i, toast_line in enumerate(toast_content):
+            buffer_y = start_y + i
+            if 0 <= buffer_y < len(new_screen):
+                bg_line = new_screen[buffer_y]
+                clean_bg = ansi_regex.sub('', bg_line)
+                
+                left_part = clean_bg[:start_x]
+                right_part = clean_bg[start_x + toast_w:]
+                new_screen[buffer_y] = f"{left_part}{toast_line}{Colors.RESET}{right_part}"
 
         return new_screen

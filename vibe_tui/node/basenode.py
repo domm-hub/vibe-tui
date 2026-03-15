@@ -10,6 +10,9 @@ class Node:
         # Default: Return a block of empty spaces
         return [" " * width for _ in range(height)]
     
+    def handle_input():
+        return
+    
     def on(self, event: str, func):
         """Registers a callback for a specific event."""
         if event not in self._subscribers:

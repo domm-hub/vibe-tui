@@ -94,3 +94,5 @@ class FocusManager:
                 if hasattr(self.current, 'press'):
                     self.current.press()
                     self.refresh_nodes()
+        else:
+            self.focusable_nodes[self.index].handle_input(key)
