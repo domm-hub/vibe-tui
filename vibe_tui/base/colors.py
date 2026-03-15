@@ -3,6 +3,7 @@ class Colors:
     ESC = "\033"
     RESET = f"{ESC}[0m"
     BOLD = f"{ESC}[1m"
+    REVERSE = "\033[7m"
     
     # Foreground
     BLACK = f"{ESC}[30m"
