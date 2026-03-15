@@ -32,7 +32,7 @@ class FocusManager:
         focusable = []
         
         # 1. Self-Check
-        if getattr(node, 'focusable', False):
+        if getattr(node, 'focusable', True):
             focusable.append(node)
             
         # 2. Layout Discovery (HL/VL)

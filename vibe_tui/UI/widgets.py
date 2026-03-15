@@ -15,6 +15,7 @@ class UILabel(UIBox):
     def __init__(self, weight, text):
         self.text = text
         super().__init__(weight, text)
+        self.focusable = False
         
     def display(self, width, height):
         return wrap(self.text, width, height, {"tr": "", "tl": "", "br": "", "bl": "", "v": "", "h": ""})
