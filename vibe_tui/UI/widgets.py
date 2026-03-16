@@ -278,8 +278,8 @@ class UIScrollText(Node):
                 formatted_lines.append(f"{Colors.YELLOW}{num_str}{Colors.RESET}{line}")
         else:
             formatted_lines = visible_lines
-
-        content_to_wrap = "\n".join([prefix + line for line in formatted_lines]) if formatted_lines else prefix
+        content_to_wrap = f"{prefix}\n"
+        content_to_wrap += "\n".join([line for line in formatted_lines]) if formatted_lines else prefix
         
         display_title = self.title
         if max_scroll > 0:
