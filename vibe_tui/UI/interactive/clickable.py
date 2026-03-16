@@ -3,22 +3,33 @@ from ...base import wrap
 from ...base.colors import Colors
 from ...base.theme import Theme
 from ...event.eventmanager import Event
-
+import time
 
 class UIButton(UIBox):
     def __init__(self, weight, text, title="", onclick=None, focusable=True):
         super().__init__(weight, text, title, focusable=focusable)
         self.onclick = onclick
         self.is_pressed = False 
+        self.lastclick = 0
+        self.iter_pressed = 0
     
     def display(self, width, height):
         # Borders change when pressed OR selected
         if self.is_pressed:
             chars = Theme.BOLD
+            self.iter_pressed += 1
+            if self.iter_pressed == 1:
+                self.lastclick = time.time()
         elif self.selected:
-            chars = Theme.focus_borders
+            chars = Theme.SHARP
         else:
-            chars = Theme.borders
+            self.iter_pressed = 0
+            
+
+            if time.time() - self.lastclick > 0.2:
+                chars = Theme.borders
+
+                
         
         prefix = Theme.selected if self.selected else Theme.unselected
             
