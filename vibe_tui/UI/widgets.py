@@ -357,6 +357,85 @@ class UIModal(Node):
 
         return new_screen
     
+class UIModalNode(UIModal):
+    def __init__(self, node: Node, width_pct=0.5, height_pct=0.5, title="[ Modal ]"):
+        super().__init__(width_pct=width_pct, height_pct=height_pct, title=title)
+        self.content_node = node
+        self.focusable = True
+
+    def handle_input(self, key):
+        if self.is_active:
+            self.content_node.handle_input(key)
+
+    def display_over(self, screen_buffer, term_width, term_height):
+        if not self.is_active:
+            return screen_buffer
+
+        # 1. Calculate the modal's absolute dimensions
+        modal_w = max(10, int(term_width * self.width_pct))
+        modal_h = max(5, int(term_height * self.height_pct))
+
+        # 2. Calculate the top-left starting position to center it
+        start_x = (term_width - modal_w) // 2
+        start_y = (term_height - modal_h) // 2
+
+        # 3. Render the child node into a local buffer
+        # We subtract 2 for the modal's own borders
+        inner_w = modal_w - 2
+        inner_h = modal_h - 2
+        
+        # If there's a title, we usually subtract another line for the header bar
+        child_h = inner_h
+        
+        child_output = self.content_node.display(inner_w, child_h)
+
+        # 4. Wrap the child output in the modal's frame
+        # We use Theme borders
+        chars = Theme.focus_borders if self.selected else Theme.borders
+        
+        # Manually construct the frame instead of using wrap (which expects raw text)
+        res = []
+        
+        # Top Border with Title
+        top_h = chars.get('h', '─')
+        if self.title:
+            title_str = f" {self.title} "
+            left_len = (inner_w - len(title_str)) // 2
+            right_len = inner_w - len(title_str) - left_len
+            top_line = f"{chars['tl']}{top_h * left_len}{title_str}{top_h * right_len}{chars['tr']}"
+        else:
+            top_line = f"{chars['tl']}{top_h * inner_w}{chars['tr']}"
+        res.append(top_line)
+
+        # Body (Child Output)
+        v_char = chars.get('v', '│')
+        for i in range(inner_h):
+            line = child_output[i] if i < len(child_output) else " " * inner_w
+            res.append(f"{v_char}{line}{v_char}")
+
+        # Bottom Border
+        res.append(f"{chars['bl']}{top_h * inner_w}{chars['br']}")
+
+        # 5. "Blit" onto the screen buffer
+        new_screen = list(screen_buffer)
+        ansi_regex = re.compile(r'\x1b\[[0-?]*[ -/]*[@-~]')
+        
+        for i, modal_line in enumerate(res):
+            buffer_y = start_y + i
+            if 0 <= buffer_y < len(new_screen):
+                bg_line = new_screen[buffer_y]
+                clean_bg = ansi_regex.sub('', bg_line)
+                
+                left_part = clean_bg[:start_x]
+                right_part = clean_bg[start_x + modal_w:]
+                new_screen[buffer_y] = f"{left_part}{modal_line}{Colors.RESET}{right_part}"
+
+        return new_screen
+# ignore
+class UITree(UIBox):
+    def __init__(self, data: dict):
+        pass
+# end
 class UIToast(Node):
     def __init__(self, text="", duration=3, color=Colors.CYAN):
         super().__init__(weight=1, focusable=False)

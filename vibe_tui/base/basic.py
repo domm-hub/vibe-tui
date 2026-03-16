@@ -12,9 +12,7 @@ def real_len(text):
     """Uses wcswidth to get the true visual column width of a string."""
     return wcswidth(strip_ansi(text))
 
-def wrap(text, w, h, chars=None, color=None, title="", title_pos="left"):
-    if chars is None:
-        chars = Theme.borders
+def wrap(text, w, h, chars=Theme.borders, color=None, title="", title_pos="left"):
     
     inner_w = max(0, w - 2)
     inner_h = max(0, h - 2)
@@ -71,7 +69,7 @@ def wrap(text, w, h, chars=None, color=None, title="", title_pos="left"):
         res.append(f"{style}{chars['tl']}{top_bar}{chars['tr']}{reset}")
     else:
         res.append(f"{style}{chars['tl']}{chars['h'] * inner_w}{chars['tr']}{reset}")
-    
+
     # Body Construction
     for i in range(inner_h):
         line = wrapped_lines[i] if i < len(wrapped_lines) else " " * inner_w

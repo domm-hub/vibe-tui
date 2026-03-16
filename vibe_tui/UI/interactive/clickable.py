@@ -2,6 +2,7 @@ from ..base_widgets import UIBox
 from ...base import wrap
 from ...base.colors import Colors
 from ...base.theme import Theme
+from ...event.eventmanager import Event
 
 
 class UIButton(UIBox):
@@ -84,3 +85,15 @@ class UICheckbox(UIBox):
             content = self.color + content.replace('\n', Colors.RESET + '\n' + self.color) + Colors.RESET
 
         return wrap(content, w=width, h=height, chars=chars, title=self.title)
+
+    def handle_input(self, key):
+        event = Event(key)
+        # Handle Enter and Space explicitly within the node
+        if event.is_enter or (event.is_char and event.char == " "):
+            self.press()
+            return True # Indicate that input was handled
+
+    def press(self):
+        self.checked = not self.checked
+        if self.on_toggle: self.on_toggle(self.checked)
+        self.emit("change", self.checked)

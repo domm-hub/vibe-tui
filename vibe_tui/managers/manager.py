@@ -2,20 +2,29 @@ from ..keyinput import Key
 from ..event.eventmanager import Event
 
 class FocusManager:
-    def __init__(self, root_node):
-        self.root = root_node
+    def __init__(self, root_node, modals=None):
+        self.main_root = root_node
+        self.modals = modals if modals else []
         self.focusable_nodes = []
         self.index = 0
         self.refresh_nodes()
 
+    @property
+    def current_root(self):
+        """Returns the modal content if a modal is active, otherwise the main root."""
+        for modal in reversed(self.modals):
+            if getattr(modal, "is_active", False):
+                # If it's a UIModalNode, we focus its internal content
+                return getattr(modal, "content_node", modal)
+        return self.main_root
+
     def refresh_nodes(self):
-        """Deep-scans tree and keeps focus locked to the current object reference."""
+        """Deep-scans the active root and ensures focus is locked."""
         current_node = self.focusable_nodes[self.index] if self.focusable_nodes and self.index < len(self.focusable_nodes) else None
         
-        self.focusable_nodes = self._find_focusable(self.root)
+        self.focusable_nodes = self._find_focusable(self.current_root)
         
         if self.focusable_nodes:
-            # Re-map index to the same object so focus doesn't jump
             if current_node in self.focusable_nodes:
                 self.index = self.focusable_nodes.index(current_node)
             else:
@@ -63,7 +72,6 @@ class FocusManager:
 
     def next(self):
         if not self.focusable_nodes: return
-        # Atomic swap: remove old, add new
         self.focusable_nodes[self.index].selected = False
         self.index = (self.index + 1) % len(self.focusable_nodes)
         self.focusable_nodes[self.index].selected = True
@@ -80,19 +88,43 @@ class FocusManager:
 
     def handle_input(self, key):
         event = Event(key)
+        
+        # 1. Automatic Modal Intercept
+        active_modal = None
+        for modal in reversed(self.modals):
+            if getattr(modal, "is_active", False):
+                active_modal = modal
+                break
+        
+        if active_modal:
+            # Universal Close on ESC
+            if event.is_escape:
+                active_modal.is_active = False
+                self.refresh_nodes()
+                return
+            
+            # If it's a simple Modal with its own input logic (non-recursive)
+            if hasattr(active_modal, 'handle_input') and not hasattr(active_modal, 'content_node'):
+                active_modal.handle_input(key)
+                return
+            
+            # If it's a recursive ModalNode, we just let the standard navigation handle it,
+            # but we DO NOT call handle_input here to avoid double-triggering.
+
+        # 2. Standard Navigation & Delegation
         if event.is_tab:
             self.next()
         elif event.is_btab:
             self.prev()
         elif self.current:
+            handled = False
             if hasattr(self.current, 'handle_input'):
-                self.current.handle_input(key)
-                # If the widget is a TabManager, switching tabs changes the focusable tree
-                if hasattr(self.current, 'get_active_content'):
+                handled = self.current.handle_input(key)
+                # Auto-refresh if the interactive tree changed (e.g. Tab switch)
+                if hasattr(self.current, 'get_active_content') or active_modal:
                     self.refresh_nodes()
-            elif event.is_enter or (event.is_char and event.char == " "):
+                    
+            if not handled and (event.is_enter or (event.is_char and event.char == " ")):
                 if hasattr(self.current, 'press'):
                     self.current.press()
                     self.refresh_nodes()
-        else:
-            self.focusable_nodes[self.index].handle_input(key)

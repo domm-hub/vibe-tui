@@ -14,6 +14,7 @@ class Colors:
     MAGENTA = f"{ESC}[35m"
     CYAN = f"{ESC}[36m"
     WHITE = f"{ESC}[37m"
+    UNDERLINE = f"{ESC}[4m2"
     
     # Background
     BG_BLACK = f"{ESC}[40m"
