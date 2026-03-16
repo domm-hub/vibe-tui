@@ -117,14 +117,12 @@ class FocusManager:
         elif event.is_btab:
             self.prev()
         elif self.current:
-            handled = False
             if hasattr(self.current, 'handle_input'):
-                handled = self.current.handle_input(key)
+                self.current.handle_input(key)
                 # Auto-refresh if the interactive tree changed (e.g. Tab switch)
                 if hasattr(self.current, 'get_active_content') or active_modal:
                     self.refresh_nodes()
-                    
-            if not handled and (event.is_enter or (event.is_char and event.char == " ")):
+            elif event.is_enter or (event.is_char and event.char == " "):
                 if hasattr(self.current, 'press'):
                     self.current.press()
                     self.refresh_nodes()

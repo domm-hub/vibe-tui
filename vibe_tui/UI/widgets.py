@@ -7,6 +7,7 @@ from .base_widgets import UIBox
 from ..keyinput import Key
 from ..event.eventmanager import Event
 from ..base.theme import Theme
+from ..base.basic import real_len
 import re
 import time
 
@@ -19,7 +20,11 @@ class UILabel(UIBox):
         self.focusable = False
         
     def display(self, width, height):
-        return wrap(self.text, width, height, {"tr": "", "tl": "", "br": "", "bl": "", "v": "", "h": ""})
+        lines = wrap(self.text, width, height, {"tr": "", "tl": "", "br": "", "bl": "", "v": "", "h": ""})
+        # Strip trailing empty lines from the wrap output to avoid extra spacing
+        while lines and real_len(lines[-1]) == 0:
+            lines.pop()
+        return lines
     
     
     

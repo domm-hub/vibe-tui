@@ -28,7 +28,7 @@ class UIButton(UIBox):
             content = self.color + content.replace('\n', Colors.RESET + '\n' + self.color) + Colors.RESET
 
         return wrap(content, w=width, h=height, chars=chars, title=self.title)
-    
+
     def press(self):
         if self.selected:
             # UIButton "press" usually triggers an action and flashes is_pressed
@@ -85,13 +85,6 @@ class UICheckbox(UIBox):
             content = self.color + content.replace('\n', Colors.RESET + '\n' + self.color) + Colors.RESET
 
         return wrap(content, w=width, h=height, chars=chars, title=self.title)
-
-    def handle_input(self, key):
-        event = Event(key)
-        # Handle Enter and Space explicitly within the node
-        if event.is_enter or (event.is_char and event.char == " "):
-            self.press()
-            return True # Indicate that input was handled
 
     def press(self):
         self.checked = not self.checked

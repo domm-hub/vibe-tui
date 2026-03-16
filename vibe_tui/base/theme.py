@@ -11,7 +11,7 @@ class Theme:
     BOLD   = {"tl": "┏", "tr": "┓", "bl": "┗", "br": "┛", "h": "━", "v": "┃"}
     BLOCK  = {"tl": "█", "tr": "█", "bl": "█", "br": "█", "h": "▀", "v": "█"}
     ASCII  = {"tl": "+", "tr": "+", "bl": "+", "br": "+", "h": "-", "v": "|"}
-    NONE   = {"tl": " ", "tr": " ", "bl": " ", "br": " ", "h": " ", "v": " "}
+    NONE   = {"tl": "", "tr": "", "bl": "", "br": "", "h": "", "v": ""}
 
     # Current Settings
     borders = CURVED

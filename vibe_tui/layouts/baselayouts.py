@@ -1,5 +1,4 @@
 from ..node import Node
-from itertools import zip_longest
 
 class UiContainerHorizontal(Node):
     def __init__(self, weight=1):
@@ -23,6 +22,7 @@ class UiContainerHorizontal(Node):
         total_weight = sum(n.weight for n in self.nodes)
         used_width = 0
         all_child_outputs = []
+        child_widths = []
         
         for i, node in enumerate(self.nodes):
             # Calculate width for this slice
@@ -33,11 +33,22 @@ class UiContainerHorizontal(Node):
             
             # Get child lines and store them
             all_child_outputs.append(node.display(node_w, height))
+            child_widths.append(node_w)
             used_width += node_w
 
         # STITCHING: Join line 0 of every child, then line 1, etc.
-        # zip_longest handles children with different row counts
-        return ["".join(lines) for lines in zip_longest(*all_child_outputs, fillvalue=" ")]
+        combined_output = []
+        for row_idx in range(height):
+            row_parts = []
+            for col_idx, child_lines in enumerate(all_child_outputs):
+                if row_idx < len(child_lines):
+                    row_parts.append(child_lines[row_idx])
+                else:
+                    # Pad with exact width if this child didn't return enough lines
+                    row_parts.append(" " * child_widths[col_idx])
+            combined_output.append("".join(row_parts))
+            
+        return combined_output
     
     def reset(self):
         self.nodes = []
