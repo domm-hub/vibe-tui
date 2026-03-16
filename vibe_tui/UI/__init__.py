@@ -1,4 +1,8 @@
 from .base_widgets import UIBox
-from .widgets import UIBar, UIModal, UILabel, UISelect, UIScrollText, TabManagerH
+from .widgets import UIModal, UILabel, UISelect, UIScrollText, TabManagerH
+try:
+    from .widgets import UIBar
+except ImportError:
+    pass
 from .interactive.clickable import UIButton, UICheckbox
 from .interactive.textinput import PyCodeText, UIEditor, UIInput
