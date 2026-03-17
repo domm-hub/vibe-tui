@@ -6,3 +6,4 @@ except ImportError:
     pass
 from .interactive.clickable import UIButton, UICheckbox
 from .interactive.textinput import PyCodeText, UIEditor, UIInput
+from .interactive.images.image import UIImage
