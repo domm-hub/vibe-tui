@@ -320,7 +320,7 @@ class UIModal(Node):
 
         # 3. Generate the modal's content using your existing wrap function
         # We use selected=True styling (thicker borders) to make it pop
-        chars = Theme.BOLD
+        chars = Theme.CURVED
         
         # Apply a background color if your Colors class supports it, 
         # or just standard text to ensure it covers the background

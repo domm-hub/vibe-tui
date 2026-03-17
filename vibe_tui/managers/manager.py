@@ -70,6 +70,20 @@ class FocusManager:
 
         return focusable
 
+    def focus_node(self, node):
+        """Focuses a specific node by its object reference."""
+        self.refresh_nodes()
+        if node in self.focusable_nodes:
+            # Deselect current
+            if self.focusable_nodes and self.index < len(self.focusable_nodes):
+                self.focusable_nodes[self.index].selected = False
+            
+            # Select new
+            self.index = self.focusable_nodes.index(node)
+            self.focusable_nodes[self.index].selected = True
+            return True
+        return False
+
     def next(self):
         if not self.focusable_nodes: return
         self.focusable_nodes[self.index].selected = False

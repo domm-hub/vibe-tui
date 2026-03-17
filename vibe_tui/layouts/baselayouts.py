@@ -93,3 +93,48 @@ class UiContainerVertical(Node):
     def reset(self):
         self.nodes = []
         return self
+
+class CanvasNode(Node):
+    """
+    A container that allows absolute positioning of children.
+    This makes it easier to handle mouse events correctly.
+    """
+    def __init__(self, weight=1):
+        super().__init__(weight=weight)
+        self.children = [] # List of (node, x, y, w, h)
+
+    def add_node(self, node, x, y, w, h):
+        self.children.append([node, x, y, w, h])
+        return node
+
+    def display(self, width, height):
+        # Create a blank buffer for the canvas
+        buffer = [[" " for _ in range(width)] for _ in range(height)]
+        
+        # Render children and paste them into our buffer
+        for child, cx, cy, cw, ch in self.children:
+            # Ensure child doesn't exceed our canvas bounds
+            actual_w = min(cw, width - cx)
+            actual_h = min(ch, height - cy)
+            
+            if actual_w <= 0 or actual_h <= 0:
+                continue
+                
+            child_buffer = child.display(actual_w, actual_h)
+            for row_idx, row_str in enumerate(child_buffer):
+                if cy + row_idx < height:
+                    for col_idx, char in enumerate(row_str):
+                        if cx + col_idx < width:
+                            buffer[cy + row_idx][cx + col_idx] = char
+                            
+        # Flatten buffer back to list of strings
+        return ["".join(row) for row in buffer]
+
+    def dispatch_mouse_to_children(self, dispatcher, event, x, y, w, h):
+        """Called to pass mouse events to our children."""
+        # For each child, calculate their global screen bounds
+        for child, cx, cy, cw, ch in self.children:
+            child_global_x = x + cx
+            child_global_y = y + cy
+            dispatcher(child, event, child_global_x, child_global_y, cw, ch)
+

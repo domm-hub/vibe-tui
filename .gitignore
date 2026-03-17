@@ -8,7 +8,7 @@
 !/pyproject.toml
 !/LICENSE
 !/architecture.svg
-
+*.swp
 # 3. Standard Python ignores (for inside the tracked folders)
 __pycache__/
 *pycache*
@@ -25,3 +25,4 @@ env/
 .sidecar-start.sh
 .sidecar-base
 .td-root
+!/vibe_browser.py
