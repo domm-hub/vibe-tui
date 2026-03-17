@@ -11,6 +11,7 @@ A TUI library based in pure python that uses weighting to align your program per
 
 ### What Nodes (or widgets) can I use?
 - `UIBox`: A.. box
+- `UIImage(Node)`: Displays an image as block characters (requires `term-image` and `Pillow`)
 - `PyCodeText(UIBox)` (In progress): Python text editor.
 - `UILabel(UIBox)`: a box without the box part (without edges)
 - `UIBar(UIBox)`: Loading bar, requires vibe_loadbar to be installed
@@ -39,6 +40,9 @@ You can also use `FocusManager` to manage Node focus.
     │   ├── interactive
     │   │   ├── __init__.py
     │   │   ├── clickable.py
+    │   │   ├── images
+    │   │   │   ├── __init__.py
+    │   │   │   └── image.py
     │   │   └── textinput.py
     │   └── widgets.py
     ├── __init__.py

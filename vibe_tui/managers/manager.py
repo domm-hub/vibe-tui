@@ -87,6 +87,7 @@ class FocusManager:
         return self.focusable_nodes[self.index] if self.focusable_nodes else None
 
     def handle_input(self, key):
+        self.refresh_nodes() # Ensure we are acting on the correct root/modal
         event = Event(key)
         
         # 1. Automatic Modal Intercept
@@ -106,10 +107,13 @@ class FocusManager:
             # If it's a simple Modal with its own input logic (non-recursive)
             if hasattr(active_modal, 'handle_input') and not hasattr(active_modal, 'content_node'):
                 active_modal.handle_input(key)
+                # If handle_input closed the modal, refresh
+                if not active_modal.is_active:
+                    self.refresh_nodes()
                 return
             
-            # If it's a recursive ModalNode, we just let the standard navigation handle it,
-            # but we DO NOT call handle_input here to avoid double-triggering.
+            # If it's a recursive ModalNode, we let the standard navigation (step 2) handle it
+            # because 'current_root' is already pointing to the modal's content.
 
         # 2. Standard Navigation & Delegation
         if event.is_tab:
@@ -119,9 +123,8 @@ class FocusManager:
         elif self.current:
             if hasattr(self.current, 'handle_input'):
                 self.current.handle_input(key)
-                # Auto-refresh if the interactive tree changed (e.g. Tab switch)
-                if hasattr(self.current, 'get_active_content') or active_modal:
-                    self.refresh_nodes()
+                # Auto-refresh if the interactive tree changed (e.g. Tab switch or Modal toggle)
+                self.refresh_nodes()
             elif event.is_enter or (event.is_char and event.char == " "):
                 if hasattr(self.current, 'press'):
                     self.current.press()

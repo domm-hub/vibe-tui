@@ -18,7 +18,7 @@ class Event:
         self.is_btab = self.key == Key.BTAB
         self.is_fc = self.is_tab or self.is_btab
         
-        self.is_enter = self.key == Key.ENTER
+        self.is_enter = self.key == Key.ENTER or self.raw == "\n"
         self.is_action = self.is_enter
         
         self.is_up = self.key == Key.UP

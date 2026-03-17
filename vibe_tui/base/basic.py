@@ -46,7 +46,7 @@ def truncate_ansi(text, max_len):
             
     return res
 
-def wrap(text, w, h, chars=Theme.borders, color=None, title="", title_pos="left"):
+def wrap(text, w, h, chars=Theme.borders, color=None, title="", title_pos="left", mode="wrap"):
     # 1. Determine actual border widths and presence
     v_left = chars.get('v', '')
     v_right = v_left # Assume symmetry for basic wrap
@@ -64,11 +64,17 @@ def wrap(text, w, h, chars=Theme.borders, color=None, title="", title_pos="left"
     inner_h = max(0, h - t_h - b_h)
     
     raw_lines = text.splitlines()
-    wrapped_lines = []
+    final_lines = []
     
     for line in raw_lines:
         if not line:
-            wrapped_lines.append(" " * inner_w)
+            final_lines.append(" " * inner_w)
+            continue
+            
+        if mode == "truncate":
+            clean_line = truncate_ansi(line, inner_w)
+            padding = " " * (inner_w - real_len(clean_line))
+            final_lines.append(clean_line + padding)
             continue
 
         current_line = ""
@@ -87,7 +93,7 @@ def wrap(text, w, h, chars=Theme.borders, color=None, title="", title_pos="left"
                     current_visual_len += char_w
                 else:
                     padding = " " * (inner_w - current_visual_len)
-                    wrapped_lines.append(current_line + padding)
+                    final_lines.append(current_line + padding)
                     current_line = char
                     current_visual_len = char_w
             
@@ -97,7 +103,7 @@ def wrap(text, w, h, chars=Theme.borders, color=None, title="", title_pos="left"
                         
         if current_line:
             padding = " " * (inner_w - current_visual_len)
-            wrapped_lines.append(current_line + padding)
+            final_lines.append(current_line + padding)
 
     # Box Construction
     res = []
@@ -127,7 +133,7 @@ def wrap(text, w, h, chars=Theme.borders, color=None, title="", title_pos="left"
 
     # Body Construction
     for i in range(inner_h):
-        line = wrapped_lines[i] if i < len(wrapped_lines) else " " * inner_w
+        line = final_lines[i] if i < len(final_lines) else " " * inner_w
         res.append(f"{style}{v_left}{reset}{line}{style}{v_right}{reset}")
         
     # Bottom Border
@@ -161,16 +167,25 @@ def get_image_box(image_path, w, h, chars=Theme.NONE, color="\x1b[32m"):
     reset = "\x1b[0m"
     style = color if color else ""
     
+    empty_block = [f"{style}{v_left}{reset}{' ' * inner_w}{style}{v_right}{reset}" for _ in range(inner_h)]
+    if has_top:
+        tl, tr, h_char = chars.get('tl', ''), chars.get('tr', ''), chars.get('h', ' ')
+        empty_block.insert(0, f"{style}{tl}{h_char * inner_w}{tr}{reset}")
+    if has_bottom:
+        bl, br, h_char = chars.get('bl', ''), chars.get('br', ''), chars.get('h', ' ')
+        empty_block.append(f"{style}{bl}{h_char * inner_w}{br}{reset}")
+
     if not os.path.exists(image_path):
-        return [f"File {image_path} not found"]
+        return empty_block[:h]
 
     # 1. Generate Image Lines
-    # Use BlockImage to ensure the image is made of characters.
-    # High-res protocols like iTerm2 (AutoImage) cannot be stitched horizontally.
-    with Image.open(image_path) as pil_img:
-        img = BlockImage(pil_img)
-        img.set_size(frame_size=(inner_w, inner_h))
-        img_lines = str(img).splitlines()
+    try:
+        with Image.open(image_path) as pil_img:
+            img = BlockImage(pil_img)
+            img.set_size(frame_size=(inner_w, inner_h))
+            img_lines = str(img).splitlines()
+    except Exception:
+        return empty_block[:h]
 
     res = []
     
@@ -182,23 +197,16 @@ def get_image_box(image_path, w, h, chars=Theme.NONE, color="\x1b[32m"):
         res.append(f"{style}{tl}{h_char * inner_w}{tr}{reset}")
 
     # 3. Calculate Vertical Centering
-    # term_image handles horizontal width, but we might still need vertical padding
     img_height = len(img_lines)
     vert_pad_top = max(0, (inner_h - img_height) // 2)
 
     # 4. Body Construction
     for i in range(inner_h):
-        # Is this row above the image?
         if i < vert_pad_top:
             body_line = " " * inner_w
-        # Is this row part of the image?
         elif i < vert_pad_top + img_height:
             img_index = i - vert_pad_top
-            # No manual horizontal padding needed! term_image did it for us.
-            # But we MUST force an ANSI reset at the end of the line so background
-            # colors don't bleed into the right vertical border!
             raw_line = img_lines[img_index]
-            # Safety check: truncate if it's somehow wider than inner_w
             line_vis_w = real_len(raw_line)
             if line_vis_w > inner_w:
                  raw_line = truncate_ansi(raw_line, inner_w)
@@ -206,11 +214,9 @@ def get_image_box(image_path, w, h, chars=Theme.NONE, color="\x1b[32m"):
                  raw_line += " " * (inner_w - line_vis_w)
                  
             body_line = f"{raw_line}{reset}"
-        # Is this row below the image?
         else:
             body_line = " " * inner_w
             
-        # Wrap the content in your vertical borders
         res.append(f"{style}{v_left}{reset}{body_line}{style}{v_right}{reset}")
 
     # 5. Bottom Border

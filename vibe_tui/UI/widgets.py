@@ -7,7 +7,7 @@ from .base_widgets import UIBox
 from ..keyinput import Key
 from ..event.eventmanager import Event
 from ..base.theme import Theme
-from ..base.basic import real_len
+from ..base.basic import real_len, truncate_ansi, strip_ansi
 import re
 import time
 
@@ -235,11 +235,12 @@ class TabManagerH(UiContainerHorizontal):
         return super().display(width, height)
 
 class UIScrollText(Node):
-    def __init__(self, weight, text="", title="", show_line_numbers=False):
+    def __init__(self, weight, text="", title="", show_line_numbers=False, wrap=True):
         super().__init__(weight=weight, focusable=True)
         self.text = text
         self.title = title
         self.show_line_numbers = show_line_numbers
+        self.wrap = wrap
         self.scroll_y = 0 
         self._lines = text.splitlines()
 
@@ -288,8 +289,9 @@ class UIScrollText(Node):
             display_title = f"{self.title} {scroll_indicator}"
 
         chars = Theme.focus_borders if self.selected else Theme.borders
+        wrap_mode = "wrap" if self.wrap else "truncate"
 
-        return wrap(content_to_wrap, w=width, h=height, chars=chars, title=display_title, title_pos="center")
+        return wrap(content_to_wrap, w=width, h=height, chars=chars, title=display_title, title_pos="center", mode=wrap_mode)
     
 class UIModal(Node):
     def __init__(self, width_pct=0.5, height_pct=0.5, title="[ Modal ]", text=""):
@@ -344,20 +346,14 @@ class UIModal(Node):
             if 0 <= buffer_y < len(new_screen):
                 bg_line = new_screen[buffer_y]
                 
-                # Strip ANSI from the background line to calculate visual length safely
-                # (This is a simplified overlay that assumes the background line is exactly term_width wide)
-                clean_bg = ansi_regex.sub('', bg_line)
+                # Preserve background colors by using truncate_ansi for the side parts
+                left_part = truncate_ansi(bg_line, start_x)
+                # Pad left_part if it's shorter than start_x (visual columns)
+                left_part += " " * (start_x - real_len(left_part))
                 
-                # If the background line has ANSI codes, this simple slicing might disrupt them.
-                # A more robust approach rebuilds the line character by character, 
-                # but this is usually sufficient for simple TUIs where the modal covers a solid block.
-                
-                # We slice the background before and after the modal
-                left_part = clean_bg[:start_x]
-                right_part = clean_bg[start_x + modal_w:]
+                right_part = strip_ansi(bg_line)[start_x + modal_w:]
                 
                 # Stitch it together: Left BG + Modal Line + Right BG
-                # Note: We append Colors.RESET at the end to prevent modal colors bleeding into the right BG
                 new_screen[buffer_y] = f"{left_part}{modal_line}{Colors.RESET}{right_part}"
 
         return new_screen
@@ -429,10 +425,15 @@ class UIModalNode(UIModal):
             buffer_y = start_y + i
             if 0 <= buffer_y < len(new_screen):
                 bg_line = new_screen[buffer_y]
-                clean_bg = ansi_regex.sub('', bg_line)
                 
-                left_part = clean_bg[:start_x]
-                right_part = clean_bg[start_x + modal_w:]
+                # Preserve background colors by using truncate_ansi for the side parts
+                left_part = truncate_ansi(bg_line, start_x)
+                # Pad left_part if it's shorter than start_x (visual columns)
+                left_part += " " * (start_x - real_len(left_part))
+                
+                right_part = strip_ansi(bg_line)[start_x + modal_w:]
+                
+                # Stitch it together: Left BG + Modal Line + Right BG
                 new_screen[buffer_y] = f"{left_part}{modal_line}{Colors.RESET}{right_part}"
 
         return new_screen
