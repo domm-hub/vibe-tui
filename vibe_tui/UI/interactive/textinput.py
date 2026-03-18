@@ -253,3 +253,6 @@ class UIInput(Node):
         full_string = f"{styled_prefix}{styled_label}{styled_before}{cursor}{styled_after}"
 
         return wrap(full_string, w=width, h=height, chars=chars, color=self.color)
+    
+    def get_text(self):
+        return self.text
