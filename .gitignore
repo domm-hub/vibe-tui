@@ -26,3 +26,4 @@ env/
 .sidecar-base
 .td-root
 !/vibe_browser.py
+!/example.py
