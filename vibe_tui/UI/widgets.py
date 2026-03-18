@@ -10,6 +10,7 @@ from ..base.theme import Theme
 from ..base.basic import real_len, truncate_ansi, strip_ansi
 import re
 import time
+import subprocess
 
 
         
@@ -20,7 +21,14 @@ class UILabel(UIBox):
         self.focusable = False
         
     def display(self, width, height):
-        lines = wrap(self.text, width, height, {"tr": "", "tl": "", "br": "", "bl": "", "v": "", "h": ""})
+        # Apply local color if specified, else apply global theme Secondary color
+        if getattr(self, "color", None):
+            styled_text = f"{self.color}{self.text}{Colors.RESET}"
+        else:
+            t_color = Theme.current_color_theme
+            styled_text = f"{t_color.SECONDARY}{self.text.replace(chr(10), Colors.RESET + chr(10) + t_color.SECONDARY)}{Colors.RESET}"
+            
+        lines = wrap(styled_text, width, height, {"tr": "", "tl": "", "br": "", "bl": "", "v": "", "h": ""})
         # Strip trailing empty lines from the wrap output to avoid extra spacing
         while lines and real_len(lines[-1]) == 0:
             lines.pop()
@@ -148,18 +156,20 @@ class UISelect(UIBox):
         # Slice the options
         visible_options = self.options[self.scroll_l : self.scroll_l + available_lines]
         
+        t_color = Theme.current_color_theme
+        
         # Build the text content
         res = []
         # Focus indicator for the whole widget
         widget_prefix = Theme.selected if self.selected else Theme.unselected
-        res.append(widget_prefix)
+        res.append(f"{t_color.SECONDARY}{widget_prefix}{Colors.RESET}")
 
         for i, option_text in enumerate(visible_options):
             absolute_index = self.scroll_l + i 
             if absolute_index == self.selection:
-                line = f"  > {Colors.YELLOW}{option_text}{Colors.RESET}"
+                line = f" {t_color.ACCENT}▶{Colors.RESET}  {Colors.REVERSE}{option_text}{Colors.RESET}"
             else:
-                line = f"    {option_text}"
+                line = f"    {t_color.SECONDARY}{option_text}{Colors.RESET}"
             res.append(line)
 
         content = "\n".join(res)
@@ -258,6 +268,8 @@ class UIScrollText(Node):
             self.scroll_y += 1
 
     def display(self, width, height):
+        t_color = Theme.current_color_theme
+        
         inner_h = max(0, height - 2)
         if self.title:
             inner_h -= 1 
@@ -272,15 +284,19 @@ class UIScrollText(Node):
         
         formatted_lines = []
         if self.show_line_numbers:
-            pad_len = len(str(len(self._lines))) 
+            # Use a fixed minimum padding so different files align consistently
+            pad_len = max(4, len(str(len(self._lines)))) + 1
             for i, line in enumerate(visible_lines):
                 actual_line_num = self.scroll_y + i + 1
                 num_str = f"{actual_line_num:>{pad_len}} | "
-                formatted_lines.append(f"{Colors.YELLOW}{num_str}{Colors.RESET}{line}")
+                # Apply ACCENT for line numbers and SECONDARY for text
+                formatted_lines.append(f"{t_color.ACCENT}{num_str}{Colors.RESET}{t_color.SECONDARY}{line}{Colors.RESET}")
         else:
-            formatted_lines = visible_lines
-        content_to_wrap = f"{prefix}\n"
-        content_to_wrap += "\n".join([line for line in formatted_lines]) if formatted_lines else prefix
+            # Apply SECONDARY to visible lines
+            formatted_lines = [f"{t_color.SECONDARY}{line}{Colors.RESET}" for line in visible_lines]
+            
+        content_to_wrap = f"{t_color.SECONDARY}{prefix}{Colors.RESET}\n"
+        content_to_wrap += "\n".join(formatted_lines) if formatted_lines else ""
         
         display_title = self.title
         if max_scroll > 0:
@@ -292,7 +308,60 @@ class UIScrollText(Node):
         wrap_mode = "wrap" if self.wrap else "truncate"
 
         return wrap(content_to_wrap, w=width, h=height, chars=chars, title=display_title, title_pos="center", mode=wrap_mode)
-    
+
+class UITerminal(UiContainerVertical):
+    def __init__(self, weight=1, title=" TERMINAL "):
+        super().__init__(weight=weight)
+        self.title = title
+        from .interactive.textinput import UIInput
+        self.output = UIScrollText(weight=10, title=title, show_line_numbers=False, wrap=True)
+        self.cmd_input = UIInput(weight=1, label=" $ ", initial_text="")
+        
+        self.add(self.output)
+        self.add(self.cmd_input)
+        
+        self.history = [f"{Colors.BOLD}Vibe-TUI Terminal Session{Colors.RESET}", "Type 'help' for commands", ""]
+        self._update_output()
+
+    def handle_input(self, key):
+        event = Event(key)
+        # Intercept Enter on the input field
+        if event.is_enter and self.cmd_input.selected:
+            cmd = self.cmd_input.text.strip()
+            if cmd:
+                self.run_command(cmd)
+                self.cmd_input.set_text("")
+            return
+            
+        super().handle_input(key)
+
+    def run_command(self, cmd):
+        self.history.append(f"{Colors.CYAN}$ {cmd}{Colors.RESET}")
+        
+        if cmd == "clear":
+            self.history = []
+        elif cmd == "help":
+            self.history.append("Available TUI commands: clear, help")
+            self.history.append("System commands are executed via shell.")
+        else:
+            try:
+                result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=5)
+                if result.stdout:
+                    self.history.extend(result.stdout.splitlines())
+                if result.stderr:
+                    self.history.extend([f"{Colors.RED}{l}{Colors.RESET}" for l in result.stderr.splitlines()])
+                if not result.stdout and not result.stderr:
+                    self.history.append(f"{Colors.YELLOW}(No output){Colors.RESET}")
+            except Exception as e:
+                self.history.append(f"{Colors.RED}Error: {e}{Colors.RESET}")
+        
+        self._update_output()
+
+    def _update_output(self):
+        self.output.set_text("\n".join(self.history))
+        # Attempt to scroll to bottom
+        self.output.scroll_y = max(0, len(self.output._lines) - 1)
+
 class UIModal(Node):
     def __init__(self, width_pct=0.5, height_pct=0.5, title="[ Modal ]", text=""):
         super().__init__(weight=1) # Weight doesn't matter much here

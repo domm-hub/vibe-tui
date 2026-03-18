@@ -221,26 +221,33 @@ class UIInput(Node):
         self.idx = len(text)
 
     def display(self, width, height):
-            self.u += 1
-            cursor = "_" if (self.u // 10) % 2 == 0 else " "
-            
-            # Selection indicator from Theme
-            prefix = (Theme.selected if self.selected else Theme.unselected)
-            chars = Theme.focus_borders if self.selected else Theme.borders
-            
-            inner_w = max(0, width - 2 - len(self.label) - len(prefix))
-            
-            if self.idx < inner_w:
-                start = 0
-            else:
-                start = self.idx - inner_w + 1
-                
-            visible_text = self.text[start:]
-            adj_idx = self.idx - start 
-            
-            before = visible_text[:adj_idx]
-            after = visible_text[adj_idx+1:]
-            
-            full_string = f"{prefix}{self.label}{before}{cursor}{after}"
-            
-            return wrap(full_string, w=width, h=height, chars=chars, color=self.color)
+        t_color = Theme.current_color_theme
+        self.u += 1
+        cursor = "_" if (self.u // 10) % 2 == 0 else " "
+
+        # Selection indicator from Theme
+        prefix = (Theme.selected if self.selected else Theme.unselected)
+        chars = Theme.focus_borders if self.selected else Theme.borders
+
+        inner_w = max(0, width - 2 - len(self.label) - len(prefix))
+
+        if self.idx < inner_w:
+            start = 0
+        else:
+            start = self.idx - inner_w + 1
+
+        visible_text = self.text[start:]
+        adj_idx = self.idx - start
+
+        before = visible_text[:adj_idx]
+        after = visible_text[adj_idx+1:]
+
+        # Apply Global Theme Secondary color to the text
+        styled_label = f"{t_color.SECONDARY}{self.label}{Colors.RESET}"
+        styled_before = f"{t_color.SECONDARY}{before}{Colors.RESET}"
+        styled_after = f"{t_color.SECONDARY}{after}{Colors.RESET}"
+        styled_prefix = f"{t_color.SECONDARY}{prefix}{Colors.RESET}"
+
+        full_string = f"{styled_prefix}{styled_label}{styled_before}{cursor}{styled_after}"
+
+        return wrap(full_string, w=width, h=height, chars=chars, color=self.color)

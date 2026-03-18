@@ -1,5 +1,29 @@
+
+from dataclasses import dataclass
+
+@dataclass
+class Theme:
+    PRIMARY: str
+    SECONDARY: str
+    ACCENT: str
+    SUCCESS: str = "\033[32m"
+    ERROR: str = "\033[31m"
+
+# Define your specific themes
+# Using 195 for that "lighter again" blue you requested
+LIGHT_BLUE_THEME = Theme(
+    PRIMARY="\033[48;5;195;30m",   # Ultra light blue BG, Black text
+    SECONDARY="\033[38;5;153m",    # Soft blue FG
+    ACCENT="\033[1;34m"            # Bold Blue
+)
+
+DARK_THEME = Theme(
+    PRIMARY="\033[48;5;235;37m",   # Dark grey BG, White text
+    SECONDARY="\033[38;5;244m",    # Grey FG
+    ACCENT="\033[1;36m"            # Bold Cyan
+)
+
 class Colors:
-    # Use the octal escape sequence which is highly compatible
     ESC = "\033"
     RESET = f"{ESC}[0m"
     BOLD = f"{ESC}[1m"
@@ -27,5 +51,9 @@ class Colors:
     @staticmethod
     def apply(text, color_code):
         if not color_code: return text
-        # Apply color and ensure it's reset, but also handle internal resets
         return f"{color_code}{text}{Colors.RESET}"
+
+    @staticmethod
+    def pill(text, theme_color):
+        """Creates the one-line 'curved' effect using padding"""
+        return f"{theme_color}  {text}  {Colors.RESET}"

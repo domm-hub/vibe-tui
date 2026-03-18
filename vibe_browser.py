@@ -13,13 +13,21 @@ from vibe_tui import (
     UIScrollText,
     UILabel,
     UIInput,
+    UIEditor,
     UIModal,
     UIModalNode,
     UIToast,
     Colors,
     Theme,
-    Key
+    Key,
+    TabManagerH,
+    Tab,
+    UITerminal
 )
+from vibe_tui.base.colors import LIGHT_BLUE_THEME
+
+# Apply the global text theme
+Theme.set_color_theme(LIGHT_BLUE_THEME)
 
 class AdvancedFileBrowser:
     def __init__(self, start_path="."):
@@ -27,28 +35,54 @@ class AdvancedFileBrowser:
         self.sort_by_name = True
         self.show_hidden = False
         self.clipboard = None
+        self.editing_path = None
         
-        # 1. UI Setup
-        self.root = UiContainerVertical(weight=1)
-        self.header = UILabel(weight=1, text=f" {Colors.BOLD}{Colors.BLUE} VIBE ADVANCED NAVIGATOR {Colors.RESET}")
+        # --- File Browser Tab ---
+        self.tab_files = UiContainerVertical(weight=1)
         self.breadcrumbs = UILabel(weight=1, text="")
         self.search_bar = UIInput(weight=1, label="   SEARCH: ", initial_text="")
         
-        main_layout = UiContainerHorizontal(weight=18)
+        file_main_layout = UiContainerHorizontal(weight=18)
         self.file_list = UISelect(weight=1, title=" FILES ")
         self.preview_text = UIScrollText(weight=2, title=" PREVIEW ", show_line_numbers=True, wrap=False)
-        main_layout.add(self.file_list).add(self.preview_text)
+        file_main_layout.add(self.file_list).add(self.preview_text)
+        self.tab_files.add(self.breadcrumbs).add(self.search_bar).add(file_main_layout)
+
+        # --- Terminal Tab ---
+        self.terminal = UITerminal(weight=1, title=" SHELL ")
+
+        # --- Main Layout ---
+        self.root = UiContainerVertical(weight=1)
+        self.header = UILabel(weight=1, text=f" {Colors.BOLD}{Colors.BLUE} VIBE ADVANCED NAVIGATOR {Colors.RESET}")
+        
+        self.tabs = TabManagerH([
+            Tab("   Files ", self.tab_files),
+            Tab("   Terminal ", self.terminal)
+        ], weight=1)
+        
+        self.active_content_container = UiContainerVertical(weight=20)
+        self.active_content_container.add(self.tab_files)
         
         self.footer = UILabel(weight=1, text="")
+        self.root.add(self.header).add(self.tabs).add(self.active_content_container).add(self.footer)
         
+        # Tab Switching Logic
+        def on_tab_change(idx):
+            self.active_content_container.reset()
+            self.active_content_container.add(self.tabs.get_active_content())
+            # Refresh focus to the new tab's elements
+            self.app.fm.refresh_nodes()
+            
+        self.tabs.on("change", on_tab_change)
+
         # Modals & Overlays
         self.help_modal = UIModal(width_pct=0.6, height_pct=0.7, title="[ HELP ]", 
                                   text=f"{Colors.BOLD}Shortcuts{Colors.RESET}\n\n"
                                        "Arrows/Enter : Navigate\n"
                                        "Backspace    : Go up\n"
-                                       "Tab          : Switch panels\n"
+                                       "Tab          : Switch panels / Tabs\n"
                                        "y / p        : Yank (Copy) / Paste\n"
-                                       "r            : Rename\n"
+                                       "r / e        : Rename / Edit File\n"
                                        "n / N        : New File / New Folder\n"
                                        "d            : Delete item\n"
                                        "c / o        : Copy Path / Open VSCode\n"
@@ -62,6 +96,10 @@ class AdvancedFileBrowser:
         self.input_field = UIInput(weight=1, label=" Name: ", initial_text="")
         self.input_modal = UIModalNode(self.input_field, width_pct=0.4, height_pct=0.2, title="[ INPUT ]")
 
+        # Editor Modal
+        self.editor_field = UIEditor(weight=1, text="", title=" FILE EDITOR (Ctrl+S to save) ")
+        self.editor_modal = UIModalNode(self.editor_field, width_pct=0.8, height_pct=0.8, title="[ EDITOR ]")
+
         self.root.add(self.header).add(self.breadcrumbs).add(self.search_bar).add(main_layout).add(self.footer)
 
         # 2. Application Logic
@@ -73,7 +111,7 @@ class AdvancedFileBrowser:
         self.search_bar.on("change", lambda q: self.apply_filter(q))
 
         # 3. Initialize VibeApp Engine
-        self.app = VibeApp(self.root, modals=[self.help_modal, self.confirm_modal, self.input_modal, self.toast])
+        self.app = VibeApp(self.root, modals=[self.help_modal, self.confirm_modal, self.input_modal, self.editor_modal, self.toast])
 
     def update_ui_state(self):
         parts = list(self.current_path.parts)
@@ -233,8 +271,53 @@ class AdvancedFileBrowser:
             self.input_modal._subscribers.pop("submit", None)
         self.input_modal.on("submit", handle_submit)
 
+    def edit_file(self):
+        if not self.current_filtered_items: return
+        _, raw_name, is_dir = self.current_filtered_items[self.file_list.selection]
+        if is_dir:
+            self.toast.show("Cannot edit a directory")
+            return
+            
+        full_path = self.current_path / raw_name
+        try:
+            with open(full_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            self.editing_path = full_path
+            self.editor_modal.title = f"[ EDITING: {raw_name} | ESC to close | Ctrl+S to save ]"
+            self.editor_field.lines = content.splitlines() if content else [""]
+            self.editor_field.cursor_x = 0
+            self.editor_field.cursor_y = 0
+            self.editor_modal.is_active = True
+        except Exception as e:
+            self.toast.show(f"Cannot open file: {e}")
+
+    def save_file(self):
+        if not self.editing_path: return
+        try:
+            content = "\n".join(self.editor_field.lines)
+            with open(self.editing_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            self.toast.show(f"Saved {self.editing_path.name}")
+            # Refresh preview if it's currently selected
+            self.on_file_selected(None) 
+        except Exception as e:
+            self.toast.show(f"Save failed: {e}")
+
     def run(self):
         def custom_input_handler(key):
+            # Editor Modal Input
+            if self.editor_modal.is_active:
+                if key == Key.ESCAPE[0]:
+                    self.editor_modal.is_active = False
+                    self.editing_path = None
+                    return True
+                elif key == '\x13': # Ctrl+S
+                    self.save_file()
+                    return True
+                # Let the editor handle standard typing, arrows, etc.
+                self.editor_field.handle_input(key)
+                return True
+                
             if self.input_modal.is_active:
                 if key in (Key.ENTER[0], "\n"): self.input_modal.emit("submit"); return True
                 if key == Key.ESCAPE[0]: self.input_modal.is_active = False; return True
@@ -255,6 +338,7 @@ class AdvancedFileBrowser:
             if key == 'y': self.yank(); return True
             if key == 'p': self.paste(); return True
             if key == 'd': self.delete_item(); return True
+            if key == 'e': self.edit_file(); return True
             if key == 'r':
                 _, name, _ = self.current_filtered_items[self.file_list.selection]
                 self.prompt_input("RENAME", lambda n: (os.rename(self.current_path/name, self.current_path/n), self.load_directory(self.current_path)), name)

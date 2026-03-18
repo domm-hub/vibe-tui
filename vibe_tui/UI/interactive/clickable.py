@@ -17,26 +17,20 @@ class UIButton(UIBox):
         # Borders change when pressed OR selected
         if self.is_pressed:
             chars = Theme.BOLD
-            self.iter_pressed += 1
-            if self.iter_pressed == 1:
-                self.lastclick = time.time()
+            self.is_pressed = False  # Reset after one frame of feedback
         elif self.selected:
-            chars = Theme.SHARP
+            chars = Theme.focus_borders
         else:
-            self.iter_pressed = 0
-            
+            chars = Theme.borders
 
-            if time.time() - self.lastclick > 0.2:
-                chars = Theme.borders
-
-                
-        
         prefix = Theme.selected if self.selected else Theme.unselected
-            
         content = f"{prefix}{self.text}"
-        
+
         if self.color:
             content = self.color + content.replace('\n', Colors.RESET + '\n' + self.color) + Colors.RESET
+        else:
+            t_color = Theme.current_color_theme
+            content = f"{t_color.SECONDARY}{content.replace(chr(10), Colors.RESET + chr(10) + t_color.SECONDARY)}{Colors.RESET}"
 
         return wrap(content, w=width, h=height, chars=chars, title=self.title)
 
@@ -48,26 +42,6 @@ class UIButton(UIBox):
             if self.onclick: self.onclick()
             # New signal system
             self.emit("click")
-
-    def display(self, width, height):
-        # Borders change when pressed OR selected
-        if self.is_pressed:
-            chars = Theme.BOLD
-            self.is_pressed = False  # Reset after one frame of feedback
-        elif self.selected:
-            chars = Theme.focus_borders
-        else:
-            chars = Theme.borders
-
-        prefix = Theme.selected if self.selected else Theme.unselected
-
-        content = f"{prefix}{self.text}"
-
-        if self.color:
-            content = self.color + content.replace('\n', Colors.RESET + '\n' + self.color) + Colors.RESET
-
-        return wrap(content, w=width, h=height, chars=chars, title=self.title)
-
 
 class UICheckbox(UIBox):
     def __init__(self, weight, text, title="", on_toggle=None, default_state=False):
@@ -94,6 +68,9 @@ class UICheckbox(UIBox):
         
         if self.color:
             content = self.color + content.replace('\n', Colors.RESET + '\n' + self.color) + Colors.RESET
+        else:
+            t_color = Theme.current_color_theme
+            content = f"{t_color.SECONDARY}{content.replace(chr(10), Colors.RESET + chr(10) + t_color.SECONDARY)}{Colors.RESET}"
 
         return wrap(content, w=width, h=height, chars=chars, title=self.title)
 

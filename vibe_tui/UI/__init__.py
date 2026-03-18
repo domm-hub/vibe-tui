@@ -1,5 +1,5 @@
 from .base_widgets import UIBox
-from .widgets import UIModal, UILabel, UISelect, UIScrollText, TabManagerH, UIModalNode, UIToast
+from .widgets import UIModal, UILabel, UISelect, UIScrollText, TabManagerH, UIModalNode, UIToast, UITerminal
 try:
     from .widgets import UIBar
 except ImportError:

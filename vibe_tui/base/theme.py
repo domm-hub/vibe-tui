@@ -1,4 +1,4 @@
-from .colors import Colors
+from .colors import Colors, Theme as ColorTheme, DARK_THEME, LIGHT_BLUE_THEME
 
 class Theme:
     """
@@ -25,12 +25,20 @@ class Theme:
     checked = "[X] "
     unchecked = "[ ] "
     
-    # Colors
+    # Legacy Colors (Keeping for backwards compatibility)
     primary = Colors.CYAN
     secondary = Colors.YELLOW
     accent = Colors.MAGENTA
     error = Colors.RED
     
+    # New Dynamic Color Engine
+    current_color_theme: ColorTheme = DARK_THEME
+
+    @classmethod
+    def set_color_theme(cls, theme: ColorTheme):
+        """Globally swap the color palette for all nodes."""
+        cls.current_color_theme = theme
+        
     @classmethod
     def set_theme(cls, name: str):
         """Quickly swap the global border style."""
@@ -44,3 +52,4 @@ class Theme:
         }
         if name.lower() in themes:
             cls.borders = themes[name.lower()]
+

@@ -20,9 +20,12 @@ class UIBox(Node):
         
         chars = Theme.focus_borders if self.selected else Theme.borders
         
-        # Apply color if set
+        # Apply Node-specific color first, otherwise apply Global Theme SECONDARY text color
         if self.color:
             content = self.color + content.replace('\n', Colors.RESET + '\n' + self.color) + Colors.RESET
+        else:
+            t_color = Theme.current_color_theme
+            content = f"{t_color.SECONDARY}{content.replace(chr(10), Colors.RESET + chr(10) + t_color.SECONDARY)}{Colors.RESET}"
             
         return wrap(content, w=width, h=height, title=self.title, chars=chars)
     
