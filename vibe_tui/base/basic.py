@@ -1,8 +1,6 @@
 import re
 from wcwidth import wcswidth, wcwidth
 from .theme import Theme
-from term_image.image import BlockImage
-from PIL import Image
 import os
 
 # Robust ANSI regex covering CSI, OSC, and other common sequences
@@ -180,6 +178,8 @@ def get_image_box(image_path, w, h, chars=Theme.NONE, color="\x1b[32m"):
 
     # 1. Generate Image Lines
     try:
+        from term_image.image import BlockImage
+        from PIL import Image
         with Image.open(image_path) as pil_img:
             img = BlockImage(pil_img)
             img.set_size(frame_size=(inner_w, inner_h))

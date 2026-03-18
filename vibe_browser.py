@@ -37,43 +37,27 @@ class AdvancedFileBrowser:
         self.clipboard = None
         self.editing_path = None
         
-        # --- File Browser Tab ---
-        self.tab_files = UiContainerVertical(weight=1)
+        # --- File Browser Area ---
+        self.tab_files = UiContainerVertical(weight=25)
         self.breadcrumbs = UILabel(weight=1, text="")
         self.search_bar = UIInput(weight=1, label="   SEARCH: ", initial_text="")
         
-        file_main_layout = UiContainerHorizontal(weight=18)
+        main_layout = UiContainerHorizontal(weight=18)
         self.file_list = UISelect(weight=1, title=" FILES ")
         self.preview_text = UIScrollText(weight=2, title=" PREVIEW ", show_line_numbers=True, wrap=False)
-        file_main_layout.add(self.file_list).add(self.preview_text)
-        self.tab_files.add(self.breadcrumbs).add(self.search_bar).add(file_main_layout)
+        main_layout.add(self.file_list).add(self.preview_text)
+        self.tab_files.add(self.breadcrumbs).add(self.search_bar).add(main_layout)
 
-        # --- Terminal Tab ---
-        self.terminal = UITerminal(weight=1, title=" SHELL ")
+        # --- Terminal Area (Persistent) ---
+        self.terminal = UITerminal(weight=10, title=" QUICK SHELL ")
 
-        # --- Main Layout ---
+        # --- Main Layout Assembly ---
         self.root = UiContainerVertical(weight=1)
         self.header = UILabel(weight=1, text=f" {Colors.BOLD}{Colors.BLUE} VIBE ADVANCED NAVIGATOR {Colors.RESET}")
-        
-        self.tabs = TabManagerH([
-            Tab("   Files ", self.tab_files),
-            Tab("   Terminal ", self.terminal)
-        ], weight=1)
-        
-        self.active_content_container = UiContainerVertical(weight=20)
-        self.active_content_container.add(self.tab_files)
-        
         self.footer = UILabel(weight=1, text="")
-        self.root.add(self.header).add(self.tabs).add(self.active_content_container).add(self.footer)
         
-        # Tab Switching Logic
-        def on_tab_change(idx):
-            self.active_content_container.reset()
-            self.active_content_container.add(self.tabs.get_active_content())
-            # Refresh focus to the new tab's elements
-            self.app.fm.refresh_nodes()
-            
-        self.tabs.on("change", on_tab_change)
+        # Add everything to root in order
+        self.root.add(self.header).add(self.tab_files).add(self.terminal).add(self.footer)
 
         # Modals & Overlays
         self.help_modal = UIModal(width_pct=0.6, height_pct=0.7, title="[ HELP ]", 
@@ -100,7 +84,6 @@ class AdvancedFileBrowser:
         self.editor_field = UIEditor(weight=1, text="", title=" FILE EDITOR (Ctrl+S to save) ")
         self.editor_modal = UIModalNode(self.editor_field, width_pct=0.8, height_pct=0.8, title="[ EDITOR ]")
 
-        self.root.add(self.header).add(self.breadcrumbs).add(self.search_bar).add(main_layout).add(self.footer)
 
         # 2. Application Logic
         self.all_items = []
@@ -340,12 +323,36 @@ class AdvancedFileBrowser:
             if key == 'd': self.delete_item(); return True
             if key == 'e': self.edit_file(); return True
             if key == 'r':
+                if not self.current_filtered_items: return True
                 _, name, _ = self.current_filtered_items[self.file_list.selection]
-                self.prompt_input("RENAME", lambda n: (os.rename(self.current_path/name, self.current_path/n), self.load_directory(self.current_path)), name)
+                def do_rename(new_name):
+                    try:
+                        os.rename(self.current_path / name, self.current_path / new_name)
+                        self.load_directory(self.current_path)
+                    except Exception as e:
+                        self.toast.show(f"Rename failed: {e}")
+                self.prompt_input("RENAME", do_rename, name)
                 return True
-            if key == 'n': self.prompt_input("NEW FILE", lambda n: ((self.current_path/n).touch(), self.load_directory(self.current_path))); return True
-            if key == 'N': self.prompt_input("NEW FOLDER", lambda n: (os.mkdir(self.current_path/n), self.load_directory(self.current_path))); return True
+            if key == 'n':
+                def do_new_file(n):
+                    try:
+                        (self.current_path / n).touch()
+                        self.load_directory(self.current_path)
+                    except Exception as e:
+                        self.toast.show(f"Error creating file: {e}")
+                self.prompt_input("NEW FILE", do_new_file)
+                return True
+            if key == 'N':
+                def do_new_folder(n):
+                    try:
+                        os.mkdir(self.current_path / n)
+                        self.load_directory(self.current_path)
+                    except Exception as e:
+                        self.toast.show(f"Error creating folder: {e}")
+                self.prompt_input("NEW FOLDER", do_new_folder)
+                return True
             if key == 'o':
+                if not self.current_filtered_items: return True
                 _, name, _ = self.current_filtered_items[self.file_list.selection]
                 try: subprocess.run(['code', str(self.current_path/name)], check=True); self.toast.show(f"Opened {name} in Code")
                 except: self.toast.show("VS Code command 'code' not found")
@@ -353,6 +360,7 @@ class AdvancedFileBrowser:
             if key == 'q': self.app.stop(); return True
             if key in (Key.ENTER[0], "\n"):
                 if self.app.fm.current == self.file_list:
+                    if not self.current_filtered_items: return True
                     _, raw_name, is_dir = self.current_filtered_items[self.file_list.selection]
                     if is_dir: self.load_directory(self.current_path / raw_name); self.search_bar.set_text("")
                     return True

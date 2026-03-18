@@ -208,6 +208,8 @@ class UIInput(Node):
             self.idx -= 1
         elif event.is_right and self.idx < len(self.text):
             self.idx += 1
+        elif event.is_enter:
+            self.emit("submit", self.text)
         elif event.is_char:
             self.text = self.text[:self.idx] + event.char + self.text[self.idx:]
             self.idx += 1

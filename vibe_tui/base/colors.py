@@ -39,6 +39,7 @@ class Colors:
     CYAN = f"{ESC}[36m"
     WHITE = f"{ESC}[37m"
     UNDERLINE = f"{ESC}[4m2"
+    DIM = f"{ESC}[2m"
     
     # Background
     BG_BLACK = f"{ESC}[40m"

@@ -320,20 +320,15 @@ class UITerminal(UiContainerVertical):
         self.add(self.output)
         self.add(self.cmd_input)
         
-        self.history = [f"{Colors.BOLD}Vibe-TUI Terminal Session{Colors.RESET}", "Type 'help' for commands", ""]
-        self._update_output()
-
-    def handle_input(self, key):
-        event = Event(key)
-        # Intercept Enter on the input field
-        if event.is_enter and self.cmd_input.selected:
-            cmd = self.cmd_input.text.strip()
+        # Listen for Enter on the input field
+        def handle_submit(cmd):
             if cmd:
                 self.run_command(cmd)
                 self.cmd_input.set_text("")
-            return
-            
-        super().handle_input(key)
+        self.cmd_input.on("submit", handle_submit)
+        
+        self.history = [f"{Colors.BOLD}Vibe-TUI Terminal Session{Colors.RESET}", "Type 'help' for commands", ""]
+        self._update_output()
 
     def run_command(self, cmd):
         self.history.append(f"{Colors.CYAN}$ {cmd}{Colors.RESET}")
