@@ -97,3 +97,5 @@ class VibeApp:
     @property
     def last_key(self):
         return self._last_key
+
+# 

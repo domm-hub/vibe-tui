@@ -227,3 +227,5 @@ def get_image_box(image_path, w, h, chars=Theme.NONE, color="\x1b[32m"):
         res.append(f"{style}{bl}{h_char * inner_w}{br}{reset}")
     
     return res[:h]
+
+#

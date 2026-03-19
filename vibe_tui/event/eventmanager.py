@@ -46,3 +46,5 @@ class Event:
         if isinstance(other, (tuple, list)):
             return self.key == other
         return super().__eq__(other)
+
+#

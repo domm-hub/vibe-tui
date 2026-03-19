@@ -58,3 +58,5 @@ class Colors:
     def pill(text, theme_color):
         """Creates the one-line 'curved' effect using padding"""
         return f"{theme_color}  {text}  {Colors.RESET}"
+
+#
