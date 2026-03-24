@@ -44,14 +44,46 @@ def truncate_ansi(text, max_len):
             
     return res
 
-def wrap(text, w, h, chars=Theme.borders, color=None, title="", title_pos="left", mode="wrap"):
-    # 1. Determine actual border widths and presence
+import re
+from wcwidth import wcwidth
+
+# The "Main Character" Regex for ANSI escape codes
+ANSI_REGEX = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+
+def real_len(text):
+    """Calculates visible width, ignoring ANSI and handling wide chars."""
+    clean_text = ANSI_REGEX.sub('', text)
+    return sum(max(0, wcwidth(c)) for c in clean_text)
+
+def truncate_ansi(text, max_w):
+    """Truncates text to a specific visual width while keeping ANSI codes."""
+    v_len = 0
+    res = ""
+    # Split by ANSI to keep them intact
+    parts = ANSI_REGEX.split(text)
+    matches = ANSI_REGEX.findall(text)
+    
+    for i, part in enumerate(parts):
+        for char in part:
+            char_w = max(0, wcwidth(char))
+            if v_len + char_w <= max_w:
+                res += char
+                v_len += char_w
+            else:
+                return res
+        if i < len(matches):
+            res += matches[i]
+    return res
+
+def wrap(text, w, h, chars=None, color=None, title="", title_pos="left", mode="wrap"):
+    if chars is None:
+        chars = {'v': '│', 'h': '─', 'tl': '╭', 'tr': '╮', 'bl': '╰', 'br': '╯'}
+        
     v_left = chars.get('v', '')
-    v_right = v_left # Assume symmetry for basic wrap
+    v_right = v_left 
     l_w = real_len(v_left)
     r_w = real_len(v_right)
     
-    # Check if we should even render top/bottom borders
     has_top = any(chars.get(k) for k in ['tl', 'tr', 'h']) or title
     has_bottom = any(chars.get(k) for k in ['bl', 'br', 'h'])
     
@@ -63,7 +95,8 @@ def wrap(text, w, h, chars=Theme.borders, color=None, title="", title_pos="left"
     
     raw_lines = text.splitlines()
     final_lines = []
-    
+    active_style = "" # 🚀 THE SECRET SAUCE: Tracks current color state
+
     for line in raw_lines:
         if not line:
             final_lines.append(" " * inner_w)
@@ -72,73 +105,68 @@ def wrap(text, w, h, chars=Theme.borders, color=None, title="", title_pos="left"
         if mode == "truncate":
             clean_line = truncate_ansi(line, inner_w)
             padding = " " * (inner_w - real_len(clean_line))
-            final_lines.append(clean_line + padding)
+            final_lines.append(active_style + clean_line + padding)
             continue
 
-        current_line = ""
+        current_line = active_style # Start with the last known style
         current_visual_len = 0
         
-        # Using the robust regex to split line into text and escape sequences
+        # Split line into text chunks and ANSI matches
         parts = ANSI_REGEX.split(line)
         matches = ANSI_REGEX.findall(line)
         
         for i, part in enumerate(parts):
-            # Process text part
             for char in part:
                 char_w = max(0, wcwidth(char))
                 if current_visual_len + char_w <= inner_w:
                     current_line += char
                     current_visual_len += char_w
                 else:
+                    # WRAP TIME: Close the current line and start a new one with the style
                     padding = " " * (inner_w - current_visual_len)
-                    final_lines.append(current_line + padding)
-                    current_line = char
+                    final_lines.append(current_line + "\x1b[0m" + padding)
+                    current_line = active_style + char 
                     current_visual_len = char_w
             
-            # Process ANSI part
+            # Update the active style when we hit an ANSI match
             if i < len(matches):
+                active_style += matches[i]
                 current_line += matches[i]
                         
         if current_line:
             padding = " " * (inner_w - current_visual_len)
-            final_lines.append(current_line + padding)
+            final_lines.append(current_line + "\x1b[0m" + padding)
 
-    # Box Construction
+    # --- Box Construction ---
     res = []
     reset = "\x1b[0m"
     style = color if color else ""
     
-    # Title/Top Border
+    # Top Border & Title
     if has_top:
-        tl = chars.get('tl', '')
-        tr = chars.get('tr', '')
-        h_char = chars.get('h', ' ')
-        
+        tl, tr, h_char = chars.get('tl', ''), chars.get('tr', ''), chars.get('h', ' ')
         if title:
-            t_str = f"| {title} |"
+            t_str = f"┤ {title} ├" # Styled title
             t_len = real_len(t_str)
             if title_pos == "right":
-                top_bar = f"{h_char * max(0, inner_w - t_len)}{t_str}"
+                top_bar = f"{h_char * (inner_w - t_len)}{t_str}"
             elif title_pos == "center":
-                left = max(0, (inner_w - t_len) // 2)
-                right = max(0, inner_w - t_len - left)
-                top_bar = f"{h_char * left}{t_str}{h_char * right}"
+                pad = (inner_w - t_len) // 2
+                top_bar = f"{h_char * pad}{t_str}{h_char * (inner_w - t_len - pad)}"
             else:
-                top_bar = f"{t_str}{h_char * max(0, inner_w - t_len)}"
+                top_bar = f"{t_str}{h_char * (inner_w - t_len)}"
             res.append(f"{style}{tl}{top_bar}{tr}{reset}")
         else:
             res.append(f"{style}{tl}{h_char * inner_w}{tr}{reset}")
 
-    # Body Construction
+    # Body Sections
     for i in range(inner_h):
         line = final_lines[i] if i < len(final_lines) else " " * inner_w
         res.append(f"{style}{v_left}{reset}{line}{style}{v_right}{reset}")
         
     # Bottom Border
     if has_bottom:
-        bl = chars.get('bl', '')
-        br = chars.get('br', '')
-        h_char = chars.get('h', ' ')
+        bl, br, h_char = chars.get('bl', ''), chars.get('br', ''), chars.get('h', ' ')
         res.append(f"{style}{bl}{h_char * inner_w}{br}{reset}")
         
     return res[:h]
