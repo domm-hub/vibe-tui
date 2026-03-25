@@ -1,5 +1,5 @@
 import subprocess
-
+import sys
 from ..base_widgets import UIBox
 from ...base import wrap
 from ...base.colors import Colors
@@ -232,7 +232,7 @@ class UITerminal(UiContainerVertical):
         self.title = title
         from ..interactive.textinput import UIInput
         self.output = UIScrollText(weight=10, title=title, show_line_numbers=False, wrap=True)
-        self.cmd_input = UIInput(weight=1, label=" $ ", initial_text="")
+        self.cmd_input = UIInput(weight=3, label=" $ ", initial_text="")
         
         self.add(self.output)
         self.add(self.cmd_input)
@@ -257,7 +257,7 @@ class UITerminal(UiContainerVertical):
             self.history.append("System commands are executed via shell.")
         else:
             try:
-                result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=5)
+                result = subprocess.run("zsh -c "+cmd if sys.platform == "darwin" else cmd, shell=True, capture_output=True, text=True, timeout=5)
                 if result.stdout:
                     self.history.extend(result.stdout.splitlines())
                 if result.stderr:

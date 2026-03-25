@@ -108,86 +108,311 @@ class UIEditor(UIBox):
         self.text = "\n".join(output_lines)
         return super().display(width, height)
     
-    def set_text(self, text):
+    def set(self, text):
         self.lines = text.splitlines() if text else [""]
         self.cursor_x = 0
         self.cursor_y = 0
         self.scroll_y = 0
-    
-
 class PyCodeText(UIBox):
-    def __init__(self, weight, text="", title=""):
-        super().__init__(weight=weight, text=text, title=title)
-        self.python_keywords = ([
-            # Control Flow
-            "if", "elif", "else", "for", "while", "break", "continue", "in",
-            
-            # Structure & Definitions
-            "class", "def", "return", "super", "pass", "lambda", "yield",
-            
-            # State & Logic
-            "True", "False", "None", "not", "and", "or", "is",
-            
-            # Organization & Safety
-            "import", "from", "as", "try", "except", "with", "del", "global"
-        ], "yellow")
+    def __init__(self, weight, text="", title=" CODE "):
+        super().__init__(weight=weight, text=text, title=title, focusable=True)
+        self.lines = text.splitlines() if text else [""]
+        self.cursor_x = 0
+        self.cursor_y = 0
+        self.scroll_y = 0  
+        self.u = 0 
+        self.h = True # Highlighting Toggle
         
-        self.brackets = ([
-            "[", "]",
-            "{", "}",
-            "(", ")"
-        ], 'yellow')
-        self.symbols = ([
-            ":", ";",
-        ], 'white')
+        self.styles = {
+            'keyword': (r"\b(if|elif|else|for|while|break|continue|in|class|def|return|super|pass|lambda|yield|True|False|None|not|and|or|is|import|from|as|try|except|with|del|global)\b", Colors.YELLOW),
+            'builtin': (r"\b(abs|all|any|ascii|bin|bool|breakpoint|bytearray|bytes|callable|chr|classmethod|compile|complex|delattr|dict|dir|divmod|enumerate|eval|exec|filter|float|format|frozenset|getattr|globals|hasattr|hash|help|hex|id|input|int|isinstance|issubclass|iter|len|list|locals|map|max|memoryview|min|next|object|oct|open|ord|pow|print|property|range|repr|reversed|round|set|setattr|slice|sorted|staticmethod|str|sum|super|tuple|type|vars|zip|__import__)\b", Colors.YELLOW),
+            'bracket': (r'[\[\]\(\)\{\}]', Colors.YELLOW),
+            'symbol': (r'([+\-*/%&|^=<>!~:;,.]{1,2})', Colors.RED),
+            'comment': (r'#.*', Colors.BLUE),
+            'string': (r'([\'"])(?:(?=(\\?))\2.)*?\1', Colors.GREEN),
+        }
 
-        self.str = ([
-            '"', "'", 
-        ], 'green')
+    def handle_input(self, key):
+        event = Event(key)
+        self.u = 0 
+        modified = False
         
-        self.comments = (["#"], 'blue')
-        
-    def set(self, text, cursor_idx):
-        # 1. We split while keeping the newlines intact
-        # This regex splits by spaces/tabs but remembers the structure
-        tokens = re.split(r'(\s+)', text)
-        
-        self.highlighted_text = ""
-        current_len = 0
-        
-        for token in tokens:
-            # Skip empty tokens from the split
-            if not token: continue
+        if event.is_nav:
+            if event.is_up and self.cursor_y > 0:
+                self.cursor_y -= 1
+                self.cursor_x = min(self.cursor_x, len(self.lines[self.cursor_y]))
+            elif event.is_down and self.cursor_y < len(self.lines) - 1:
+                self.cursor_y += 1
+                self.cursor_x = min(self.cursor_x, len(self.lines[self.cursor_y]))
+            elif event.is_left:
+                if self.cursor_x > 0: self.cursor_x -= 1
+                elif self.cursor_y > 0:
+                    self.cursor_y -= 1
+                    self.cursor_x = len(self.lines[self.cursor_y])
+            elif event.is_right:
+                if self.cursor_x < len(self.lines[self.cursor_y]): self.cursor_x += 1
+                elif self.cursor_y < len(self.lines) - 1:
+                    self.cursor_y += 1
+                    self.cursor_x = 0
+
+        elif event.is_backspace:
+            modified = True
+            if self.cursor_x > 0:
+                line = self.lines[self.cursor_y]
+                self.lines[self.cursor_y] = line[:self.cursor_x-1] + line[self.cursor_x:]
+                self.cursor_x -= 1
+            elif self.cursor_y > 0:
+                prev_len = len(self.lines[self.cursor_y-1])
+                self.lines[self.cursor_y-1] += self.lines.pop(self.cursor_y)
+                self.cursor_y -= 1
+                self.cursor_x = prev_len
+
+        elif event.is_enter:
+            modified = True
+            line = self.lines[self.cursor_y]
+            self.lines[self.cursor_y] = line[:self.cursor_x]
+            self.lines.insert(self.cursor_y + 1, line[self.cursor_x:])
+            self.cursor_y += 1
+            self.cursor_x = 0
+
+        elif event.is_char:
+            modified = True
+            line = self.lines[self.cursor_y]
+            self.lines[self.cursor_y] = line[:self.cursor_x] + event.char + line[self.cursor_x:]
+            self.cursor_x += 1
             
-            # 2. Check if this token is a word or just whitespace
-            if token.strip():
-                # Get the base color
-                color = Colors.WHITE
-                if token in self.python_keywords[0]: color = self.python_keywords[1]
-                elif token in self.brackets[0]: color = self.brackets[1]
-                elif token in self.symbols[0]: color = self.symbols[1]
-                elif token.startswith("#"): color = self.comments[1]
+        if modified:
+            self.emit("change", "\n".join(self.lines))
+
+    def display(self, width, height):
+        self.u += 1
+        inner_h = height - 2
+        
+        if self.cursor_y < self.scroll_y:
+            self.scroll_y = self.cursor_y
+        elif self.cursor_y >= self.scroll_y + inner_h:
+            self.scroll_y = self.cursor_y - inner_h + 1
+
+        visible_lines = self.lines[self.scroll_y : self.scroll_y + inner_h]
+        visible_text = "\n".join(visible_lines)
+        
+        rel_cursor_y = self.cursor_y - self.scroll_y
+        cursor_1d = sum(len(line) + 1 for line in visible_lines[:rel_cursor_y]) + self.cursor_x
+        
+        # 1. Generate Highlighted String
+        self.highlight(visible_text, cursor_1d)
+        
+        # 2. YOUR PADDING SKIP logic
+        padding = "  "
+        lines = self.text.splitlines()
+        if not lines: lines = [""]
+        
+        padded_lines = [f"{padding if i != 0 else ''}{line}" for i, line in enumerate(lines)]
+        self.text = "\n".join(padded_lines)
+        
+        return super().display(width, height)
+
+    def highlight(self, text, cursor_idx):
+        highlighted = ""
+        current_pos = 0
+        show_cursor = (self.u // 15) % 2 == 0 and self.selected
+
+        # Split everything including the newlines to keep current_pos accurate
+        pattern = r'(\s+|[\[\]\(\)\{\}:;=\+\-\*\/]|#.*|[\'"].*?[\'"])'
+        parts = re.split(pattern, text)
+
+        for part in parts:
+            if not part: continue
+            
+            # Use specific color if highlighting is ON, otherwise stick to White
+            color = Colors.WHITE
+            if self.h:
+                if re.fullmatch(self.styles['keyword'][0], part): color = self.styles['keyword'][1]
+                elif re.fullmatch(self.styles['builtin'][0], part): color = self.styles['builtin'][1]
+                elif re.fullmatch(self.styles['bracket'][0], part): color = self.styles['bracket'][1]
+                elif re.fullmatch(self.styles['symbol'][0], part): color = self.styles['symbol'][1]
+                elif part.startswith("#"): color = self.styles['comment'][1]
+                elif part.startswith(tuple("'\"")): color = self.styles['string'][1]
+
+            part_len = len(part)
+            
+            # Cursor Logic: REVERSE the char at the cursor index
+            if current_pos <= cursor_idx < current_pos + part_len and show_cursor:
+                rel_idx = cursor_idx - current_pos
+                char = part[rel_idx]
                 
-                ansi_color = getattr(Colors, color.upper(), Colors.WHITE)
+                # Make sure newlines show a blank space for the cursor
+                cursor_char = char if char != '\n' else ' '
+                cursor_visual = f"{Colors.REVERSE}{cursor_char}{Colors.RESET}"
                 
-                # 3. Add Cursor logic: 
-                # If the cursor index falls within this word, underline it
-                word_end = current_len + len(token)
-                if current_len <= cursor_idx < word_end:
-                    self.highlighted_text += f"{ansi_color}{Colors.UNDERLINE}{token}{Colors.RESET} "
+                # Reconstruct part with highlighted char
+                # If char was \n, we keep the \n AFTER the cursor_visual
+                if char == '\n':
+                    highlighted += f"{color}{part[:rel_idx]}{cursor_visual}\n{part[rel_idx+1:]}{Colors.RESET}"
                 else:
-                    self.highlighted_text += f"{ansi_color}{token}{Colors.RESET}"
-                
-                current_len += len(token)
+                    highlighted += f"{color}{part[:rel_idx]}{cursor_visual}{color}{part[rel_idx+1:]}{Colors.RESET}"
             else:
-                # Keep the original whitespace (newlines/tabs)
-                self.highlighted_text += token
-                current_len += len(token)
-                
+                highlighted += f"{color}{part}{Colors.RESET}"
+            
+            current_pos += part_len
+            
+        # Trailing cursor (if at the end of the line/file)
+        if cursor_idx >= len(text) and show_cursor:
+            highlighted += f"{Colors.REVERSE} {Colors.RESET}"
 
-        self.text = f"{self.highlighted_text}"
+        self.text = highlighted
+
+    def __init__(self, weight, text="", title=" CODE "):
+        super().__init__(weight=weight, text=text, title=title, focusable=True)
+        self.lines = text.splitlines() if text else [""]
+        self.cursor_x = 0
+        self.cursor_y = 0
+        self.scroll_y = 0  # 📜 The scrolling "anchor"
+        self.u = 0 
+        self.h = True
         
+        self.styles = {
+            'keyword': (r"\b(if|elif|else|for|while|break|continue|in|class|def|return|super|pass|lambda|yield|True|False|None|not|and|or|is|import|from|as|try|except|with|del|global)\b", Colors.YELLOW),
+            'bracket': (r'[\[\]\(\)\{\}]', Colors.YELLOW),
+            'symbol': (r'[:;=\+\-\*\/]', Colors.WHITE),
+            'comment': (r'#.*', Colors.BLUE),
+            'string': (r'([\'"])(?:(?=(\\?))\2.)*?\1', Colors.GREEN),
+            'builtin': (r"\b(abs|all|any|ascii|bin|bool|breakpoint|bytearray|bytes|callable|chr|classmethod|compile|complex|delattr|dict|dir|divmod|enumerate|eval|exec|filter|float|format|frozenset|getattr|globals|hasattr|hash|help|hex|id|input|int|isinstance|issubclass|iter|len|list|locals|map|max|memoryview|min|next|object|oct|open|ord|pow|print|property|range|repr|reversed|round|set|setattr|slice|sorted|staticmethod|str|sum|super|tuple|type|vars|zip|__import__)\b", Colors.YELLOW),
+            'symbol': (r'([+\-*/%&|^=<>!~:;,.])', Colors.RED),
+        }
 
+    def handle_input(self, key):
+        event = Event(key)
+        self.u = 0 
+        modified = False
+        
+        if event.is_nav:
+            if event.is_up:
+                if self.cursor_y > 0:
+                    self.cursor_y -= 1
+                    self.cursor_x = min(self.cursor_x, len(self.lines[self.cursor_y]))
+            elif event.is_down:
+                if self.cursor_y < len(self.lines) - 1:
+                    self.cursor_y += 1
+                    self.cursor_x = min(self.cursor_x, len(self.lines[self.cursor_y]))
+            elif event.is_left:
+                if self.cursor_x > 0:
+                    self.cursor_x -= 1
+                elif self.cursor_y > 0:
+                    self.cursor_y -= 1
+                    self.cursor_x = len(self.lines[self.cursor_y])
+            elif event.is_right:
+                if self.cursor_x < len(self.lines[self.cursor_y]):
+                    self.cursor_x += 1
+                elif self.cursor_y < len(self.lines) - 1:
+                    self.cursor_y += 1
+                    self.cursor_x = 0
+
+        elif event.is_backspace:
+            modified = True
+            if self.cursor_x > 0:
+                line = self.lines[self.cursor_y]
+                self.lines[self.cursor_y] = line[:self.cursor_x-1] + line[self.cursor_x:]
+                self.cursor_x -= 1
+            elif self.cursor_y > 0:
+                prev_len = len(self.lines[self.cursor_y-1])
+                self.lines[self.cursor_y-1] += self.lines.pop(self.cursor_y)
+                self.cursor_y -= 1
+                self.cursor_x = prev_len
+
+        elif event.is_enter:
+            modified = True
+            line = self.lines[self.cursor_y]
+            self.lines[self.cursor_y] = line[:self.cursor_x]
+            self.lines.insert(self.cursor_y + 1, line[self.cursor_x:])
+            self.cursor_y += 1
+            self.cursor_x = 0
+
+        elif event.is_char:
+            modified = True
+            line = self.lines[self.cursor_y]
+            self.lines[self.cursor_y] = line[:self.cursor_x] + event.char + line[self.cursor_x:]
+            self.cursor_x += 1
+            
+        if modified:
+            self.emit("change", "\n".join(self.lines))
+
+    def display(self, width, height):
+        self.u += 1
+        inner_h = height - 2  # Adjust for top/bottom borders
+        
+        # 🧠 SCROLLING LOGIC: Keep the cursor in the visible window
+        if self.cursor_y < self.scroll_y:
+            self.scroll_y = self.cursor_y
+        elif self.cursor_y >= self.scroll_y + inner_h:
+            self.scroll_y = self.cursor_y - inner_h + 1
+
+        # Slice only the visible lines for performance
+        visible_lines = self.lines[self.scroll_y : self.scroll_y + inner_h]
+        visible_text = "\n".join(visible_lines)
+        
+        # Recalculate 1D cursor position relative ONLY to visible text
+        rel_cursor_y = self.cursor_y - self.scroll_y
+        cursor_1d = sum(len(line) + 1 for line in visible_lines[:rel_cursor_y]) + self.cursor_x
+        
+        # 1. Generate Highlighted ANSI String (Visible Part Only)
+        self.highlight(visible_text, cursor_1d)
+        
+        # 2. THE ALIGNMENT FIX:
+        padding = "  "
+        lines = self.text.splitlines()
+        if not lines: lines = [""]
+        
+        padded_lines = [f"{padding if i != 0 else ""}{line}" for i, line in enumerate(lines)]
+        self.text = "\n".join(padded_lines)
+        
+        # 3. Use the global wrap function to draw the box
+        return super().display(width, height)
+
+    def highlight(self, text, cursor_idx):
+        if not self.h:
+            self.text = text
+            return
+        pattern = r'(\s+|[\[\]\(\)\{\}:;=\+\-\*\/]|#.*|[\'"].*?[\'"])'
+        parts = re.split(pattern, text)
+        
+        highlighted = ""
+        current_pos = 0
+        show_cursor = (self.u // 15) % 2 == 0 
+
+        for part in parts:
+            if not part: continue
+            
+            color = Colors.WHITE
+            # Unpacking the tuple properly
+            if re.fullmatch(self.styles['keyword'][0], part): color = self.styles['keyword'][1]
+            elif re.fullmatch(self.styles['bracket'][0], part): color = self.styles['bracket'][1]
+            elif re.fullmatch(self.styles['symbol'][0], part): color = self.styles['symbol'][1]
+            elif re.fullmatch(self.styles['builtin'][0], part): color = self.styles['builtin'][1]
+            elif re.fullmatch(self.styles['symbol'][0], part): color = self.styles['symbol'][1]
+            elif part.startswith("#"): color = self.styles['comment'][1]
+            elif part.startswith(tuple("'\"")): color = self.styles['string'][1]
+
+            part_len = len(part)
+            if current_pos <= cursor_idx < current_pos + part_len and self.selected and show_cursor:
+                rel_idx = cursor_idx - current_pos
+                before = part[:rel_idx]
+                char = part[rel_idx]
+                after = part[rel_idx+1:]
+                
+                if char == '\n':
+                    highlighted += f"{color}{before}{Colors.REVERSE} {Colors.RESET}{color}\n{after}{Colors.RESET}"
+                else:
+                    highlighted += f"{color}{before}{Colors.REVERSE}{char}{Colors.RESET}{color}{after}{Colors.RESET}"
+            else:
+                highlighted += f"{color}{part}{Colors.RESET}"
+            
+            current_pos += part_len
+            
+        if cursor_idx >= len(text) and self.selected and show_cursor:
+            highlighted += f"{Colors.REVERSE} {Colors.RESET}"
+
+        self.text = highlighted
 class UIInput(Node):
     def __init__(self, weight, label=" URL: ", initial_text=""):
         super().__init__(weight=weight, focusable=True)
@@ -218,14 +443,14 @@ class UIInput(Node):
         if modified:
             self.emit("change", self.text)
 
-    def set_text(self, text):
+    def set(self, text):
         self.text = text
         self.idx = len(text)
 
     def display(self, width, height):
         t_color = Theme.current_color_theme
         self.u += 1
-        cursor = "_" if (self.u // 10) % 2 == 0 else " "
+        cursor = "_" if (self.u // 10) % 2 == 0 and self.selected else " "
 
         # Selection indicator from Theme
         prefix = (Theme.selected if self.selected else Theme.unselected)

@@ -20,7 +20,6 @@ from vibe_tui import (
     Colors,
     Theme,
     Key,
-    TabManagerH,
     Tab,
     UITerminal
 )
@@ -40,7 +39,7 @@ class AdvancedFileBrowser:
         # --- File Browser Area ---
         self.tab_files = UiContainerVertical(weight=25)
         self.breadcrumbs = UILabel(weight=1, text="")
-        self.search_bar = UIInput(weight=1, label="   SEARCH: ", initial_text="")
+        self.search_bar = UIInput(weight=2, label="   SEARCH: ", initial_text="")
         
         main_layout = UiContainerHorizontal(weight=18)
         self.file_list = UISelect(weight=1, title=" FILES ")
@@ -49,7 +48,7 @@ class AdvancedFileBrowser:
         self.tab_files.add(self.breadcrumbs).add(self.search_bar).add(main_layout)
 
         # --- Terminal Area (Persistent) ---
-        self.terminal = UITerminal(weight=10, title=" QUICK SHELL ")
+        self.terminal = UITerminal(weight=8, title=" QUICK SHELL ")
 
         # --- Main Layout Assembly ---
         self.root = UiContainerVertical(weight=1)
@@ -101,7 +100,7 @@ class AdvancedFileBrowser:
         if len(parts) > 6: parts = ["..."] + parts[-5:]
         self.breadcrumbs.set_text(f" {Colors.CYAN}󱡁 {' ❯ '.join(parts)}{Colors.RESET}")
         
-        last_key = repr(self.app.last_key) if hasattr(self, 'app') else "'None'"
+        last_key = repr(self.app._last_key) if hasattr(self, 'app') else "'None'"
         clipboard_status = f"{Colors.GREEN}[ Yanked ]{Colors.RESET}" if self.clipboard else ""
         self.footer.set_text(f" {Colors.MAGENTA}  {last_key}{Colors.RESET} | {Colors.CYAN}h: Help | y/p: Yank/Paste{Colors.RESET} {clipboard_status}")
 
@@ -377,5 +376,5 @@ class AdvancedFileBrowser:
     def go_up(self):
         if self.current_path.parent != self.current_path: self.load_directory(self.current_path.parent); self.search_bar.set_text("")
 
-if __name__ == "__main__":
-    AdvancedFileBrowser().run()
+
+AdvancedFileBrowser().run()

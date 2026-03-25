@@ -75,7 +75,8 @@ def truncate_ansi(text, max_w):
             res += matches[i]
     return res
 
-def wrap(text, w, h, chars=None, color=None, title="", title_pos="left", mode="wrap"):
+def wrap(text, w, h, chars=None, color=None, title="", title_pos="left", mode="wrap", min=True):
+    
     if chars is None:
         chars = {'v': '│', 'h': '─', 'tl': '╭', 'tr': '╮', 'bl': '╰', 'br': '╯'}
         
