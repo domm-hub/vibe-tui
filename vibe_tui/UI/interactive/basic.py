@@ -14,7 +14,8 @@ class UISelect(UIBox):
         super().__init__(weight=weight, text="", title=title)
         self.options = options if options is not None else ["Option 1", "Option 2", "Option 3"]
         self.selection = 0    # The currently highlighted item index
-        self.scroll_l = 0     # The index of the top-most visible item (scroll offset)
+        self.scroll_l = 0 
+        self.t = title# The index of the top-most visible item (scroll offset)
     
     def handle_input(self, key):
         if not self.options: return
@@ -36,6 +37,16 @@ class UISelect(UIBox):
     def get_selected_item(self):
         if not self.options: return None
         return self.options[self.selection]
+        
+    def set_cursor_pos(self, local_x, local_y):
+        if not self.options: return
+        # UISelect renders: Border (0), Percent (1), Prefix (2), Options (3+)
+        inner_y = local_y - 3
+        if inner_y >= 0:
+            new_sel = self.scroll_l + inner_y
+            if 0 <= new_sel < len(self.options):
+                self.selection = new_sel
+                self.emit("change", self.get_selected_item())
     
     def display(self, width, height):
         # 1. Calculate how many items can actually fit in the box
@@ -57,19 +68,13 @@ class UISelect(UIBox):
             perc = 100
         else:
             perc = int((self.selection / (total_items - 1)) * 100)
-
-        # Calculate padding for dashes (width minus [00] and spacing)
-        # We subtract ~10 to account for borders and the "[00]" text
-        padding_size = (width - 10) // 2
-        dashes = "-" * max(0, padding_size)
-        percent_line = f"{Colors.DIM}{dashes} [{perc:02d}%] {dashes}-{Colors.RESET}"
-
-        # 4. Slice the options for the current scroll window
+        
+        self.title = f"{self.t} [{f'{perc:02d}%'}]"
         visible_options = self.options[self.scroll_l : self.scroll_l + available_lines]
         t_color = Theme.current_color_theme
         
         # 5. Build the text content array
-        res = [percent_line]
+        res = []
         
         # Focus indicator for the whole widget
         widget_prefix = Theme.selected if self.selected else Theme.unselected
@@ -241,7 +246,7 @@ class UITerminal(UiContainerVertical):
         def handle_submit(cmd):
             if cmd:
                 self.run_command(cmd)
-                self.cmd_input.set_text("")
+                self.cmd_input.set("")
         self.cmd_input.on("submit", handle_submit)
         
         self.history = [f"{Colors.BOLD}Vibe-TUI Terminal Session{Colors.RESET}", "Type 'help' for commands", ""]

@@ -12,7 +12,39 @@ import re
 import time
 import subprocess
 
+class CanvasNode(Node):
+    def __init__(self, width, height):
+        super().__init__()
+        self.width = width
+        self.height = height
+        self.children = []
 
+    def add_node(self, node, x, y):
+        """Add a child node at a specific position (top-left)."""
+        if 0 <= x < self.width and 0 <= y < self.height:
+            node.x = x
+            node.y = y
+            self.children.append(node)
+        else:
+            raise ValueError("Node position out of canvas bounds")
+
+    def render(self):
+        """Render canvas with children overlaid on spaces."""
+        # create empty canvas with spaces
+        canvas_lines = [[" " for _ in range(self.width)] for _ in range(self.height)]
+
+        # overlay children
+        for child in self.children:
+            sprite = child.display()  # list of strings
+            for dy, line in enumerate(sprite):
+                row = child.y + dy
+                if 0 <= row < self.height:
+                    for dx, char in enumerate(line):
+                        col = child.x + dx
+                        if 0 <= col < self.width:
+                            canvas_lines[row][col] = char
+
+        return "\n".join("".join(line) for line in canvas_lines)
         
 class UILabel(UIBox):
     def __init__(self, weight, text):

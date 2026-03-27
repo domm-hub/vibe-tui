@@ -8,6 +8,7 @@
 !/pyproject.toml
 !/LICENSE
 !/architecture.svg
+!/setup.py
 *.swp
 # 3. Standard Python ignores (for inside the tracked folders)
 __pycache__/

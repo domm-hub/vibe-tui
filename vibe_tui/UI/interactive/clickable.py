@@ -10,6 +10,7 @@ class UIButton(UIBox):
         super().__init__(weight, text, title, focusable=focusable)
         self.onclick = onclick
         self.is_pressed = False 
+        self.hovered = False
         self.lastclick = 0
         self.iter_pressed = 0
     
@@ -25,6 +26,10 @@ class UIButton(UIBox):
 
         prefix = Theme.selected if self.selected else Theme.unselected
         content = f"{prefix}{self.text}"
+        
+        # Apply hover visual cue
+        if self.hovered and not self.selected:
+            content = f"{Colors.REVERSE}{content}{Colors.RESET}"
 
         if self.color:
             content = self.color + content.replace('\n', Colors.RESET + '\n' + self.color) + Colors.RESET
@@ -35,12 +40,10 @@ class UIButton(UIBox):
         return wrap(content, w=width, h=height, chars=chars, title=self.title)
 
     def press(self):
-        if self.selected:
-            # UIButton "press" usually triggers an action and flashes is_pressed
+        # Allow pressing even if hovered but not selected, though usually click selects it first
+        if self.selected or self.hovered:
             self.is_pressed = True
-            # Legacy callback support
             if self.onclick: self.onclick()
-            # New signal system
             self.emit("click")
 
 class UICheckbox(UIBox):
@@ -48,13 +51,12 @@ class UICheckbox(UIBox):
         super().__init__(weight, text, title)
         self.on_toggle = on_toggle
         self.checked = default_state # Tracks the boolean state
+        self.hovered = False
     
     def press(self):
-        if self.selected:
+        if self.selected or self.hovered:
             self.checked = not self.checked
-            # Legacy callback support
             if self.on_toggle: self.on_toggle(self.checked)
-            # New signal system
             self.emit("toggle", self.checked)
 
     def display(self, width, height):
@@ -66,6 +68,9 @@ class UICheckbox(UIBox):
             
         content = f"{prefix}{self.text}"
         
+        if self.hovered and not self.selected:
+            content = f"{Colors.REVERSE}{content}{Colors.RESET}"
+        
         if self.color:
             content = self.color + content.replace('\n', Colors.RESET + '\n' + self.color) + Colors.RESET
         else:
@@ -73,8 +78,3 @@ class UICheckbox(UIBox):
             content = f"{t_color.SECONDARY}{content.replace(chr(10), Colors.RESET + chr(10) + t_color.SECONDARY)}{Colors.RESET}"
 
         return wrap(content, w=width, h=height, chars=chars, title=self.title)
-
-    def press(self):
-        self.checked = not self.checked
-        if self.on_toggle: self.on_toggle(self.checked)
-        self.emit("change", self.checked)
