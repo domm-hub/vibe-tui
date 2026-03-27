@@ -6,3 +6,9 @@ def islayout(m):
 
 def isnode(m):
     return isinstance(m, Node)
+
+config = None
+
+def set_const(data):
+    global config
+    config = data
