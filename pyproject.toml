@@ -25,7 +25,3 @@ images = ["term_image"]
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["vibe_tui*"]
-
-[build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"

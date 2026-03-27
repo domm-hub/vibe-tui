@@ -3,7 +3,7 @@ from setuptools import setup, Extension
 
 fast_join_module = Extension(
     'vibe_tui.managers.join', 
-    sources=['vibe_tui/managers/join.c++'], 
+    sources=['vibe_tui/managers/join.cpp'], 
     extra_compile_args=['-O3', '-fPIC'], 
 )
 
