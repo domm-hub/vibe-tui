@@ -16,6 +16,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 !VERIFY.md
+*.so
 
 # 4. Explicitly ignore virtual environments (even if they were in the root)
 env/
