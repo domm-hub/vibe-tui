@@ -15,7 +15,7 @@ BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 
 # 2. Join it with your filename
 # This works even if you run "python3 TUI/main.py" from your home folder
-lib_path = os.path.join(BASE_DIR, "join.so")
+lib_path = os.path.join(BASE_DIR, "opt.so")
 
 lib = ctypes.CDLL(os.path.abspath(lib_path))
 

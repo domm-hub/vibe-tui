@@ -12,7 +12,7 @@ A TUI library based in pure python that uses weighting to align your program per
 ### What Nodes (or widgets) can I use?
 - `UIBox(Node)`: A basic container box.
 - `UIImage(Node)`: Displays an image as block characters (requires `term-image` and `Pillow`).
-- `PyCodeText(UIBox)` (In progress): Python text editor widget.
+- `PythonCode(UIBox)`: Python text editor widget.
 - `UILabel(UIBox)`: A box without edges, used for text display.
 - `UIBar(UIBox)`: Loading bar, requires vibe_loadbar to be installed.
 - `ColorPicker(Node)`: A color selection widget.
@@ -199,5 +199,7 @@ if __name__ == "__main__":
         print(f"Error starting app: {e}")
 ```
 </details>
+
+[Read the Documentation](Docs/README.md)
 
 Made with **time** and `code` by **Adam Hany**
