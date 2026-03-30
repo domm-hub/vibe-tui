@@ -149,10 +149,6 @@ class EApp:
             u_lines = (ctypes.c_char_p * self.height)(*map(lambda b: bytes(b) if b else b"", self.ui_lines))
             out_rows = (ctypes.c_char_p * self.height)()
             EApp._merge_rows(s_lines, u_lines, out_rows, self.height)
-            
-            # update prev_rows in place, reuse buffers
-            for i in range(self.height):
-                self.prev_rows[i][:] = out_rows[i]
             return out_rows
 
         # Pure Python fallback
@@ -161,9 +157,6 @@ class EApp:
             s = self.static_lines[i]
             u = self.ui_lines[i]
             target = u if (u and u != b"") else s
-            
-            if self.prev_rows[i] != target:
-                self.prev_rows[i][:] = target
             out_rows.append(target)
         return out_rows
 
