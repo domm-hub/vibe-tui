@@ -20,4 +20,3 @@ config = init_obj["config"]
 from .statements import set_const
 
 set_const(config)
-

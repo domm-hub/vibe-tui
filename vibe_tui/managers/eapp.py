@@ -7,23 +7,60 @@ import select
 from contextlib import contextmanager
 from ..node import Node
 from .manager import FocusManager
+import platform
 import ctypes
 
-# load the C++ opt.so for row merging
-here = os.path.dirname(__file__)
-opt_path = os.path.join(here, "opt.so")
-lib = ctypes.CDLL(opt_path)
-_merge_rows = lib.merge_rows
-_merge_rows.argtypes = [
-    ctypes.POINTER(ctypes.c_char_p),
-    ctypes.POINTER(ctypes.c_char_p),
-    ctypes.POINTER(ctypes.c_char_p),
-    ctypes.c_int
-]
-
-
 class EApp:
+    _lib = None
+    _merge_rows = None
+
+    _warned = False
+
+    @classmethod
+    def get_lib(cls):
+        if cls._lib is None:
+            here = os.path.dirname(__file__)
+            
+            # Try to find the library with various suffixes (to handle setuptools naming)
+            opt_path = None
+            ext = ".dll" if platform.system() == "Windows" else ".so"
+            
+            # 1. Try exact match
+            p = os.path.join(here, f"opt{ext}")
+            if os.path.exists(p):
+                opt_path = p
+            else:
+                # 2. Try matching with glob (for something like opt.cpython-312-darwin.so)
+                import glob
+                matches = glob.glob(os.path.join(here, f"opt*{ext}"))
+                if matches:
+                    opt_path = matches[0]
+
+            if not opt_path:
+                if not cls._warned:
+                    print("WARNING: C++ extension 'opt' not found. Reverting to pure Python version.", file=sys.stderr)
+                    cls._warned = True
+                return None, None
+
+            try:
+                cls._lib = ctypes.CDLL(os.path.abspath(opt_path))
+                cls._merge_rows = cls._lib.merge_rows
+                cls._merge_rows.argtypes = [
+                    ctypes.POINTER(ctypes.c_char_p),
+                    ctypes.POINTER(ctypes.c_char_p),
+                    ctypes.POINTER(ctypes.c_char_p),
+                    ctypes.c_int
+                ]
+            except Exception:
+                if not cls._warned:
+                    print("WARNING: Failed to load C++ extension 'opt'. Reverting to pure Python version.", file=sys.stderr)
+                    cls._warned = True
+                return None, None
+        return cls._lib, cls._merge_rows
+
     def __init__(self, root_node, modals=None, key_handler=None, static_root=None, width=None, height=None, target_fps=60):
+        # Ensure library is loaded
+        EApp.get_lib()
         try:
             cols, rows = os.get_terminal_size()
         except Exception:
@@ -105,15 +142,29 @@ class EApp:
         self.running = False
 
     def _merge_to_rows(self):
-        """Use C++ merging + preallocated buffers for max speed"""
-        # convert Python lists to ctypes arrays
-        s_lines = (ctypes.c_char_p * self.height)(*map(lambda b: bytes(b), self.static_lines))
-        u_lines = (ctypes.c_char_p * self.height)(*map(lambda b: bytes(b) if b else b"", self.ui_lines))
-        out_rows = (ctypes.c_char_p * self.height)()
-        _merge_rows(s_lines, u_lines, out_rows, self.height)
-        # update prev_rows in place, reuse buffers
+        """Use C++ merging + preallocated buffers for max speed with Python fallback"""
+        if EApp._merge_rows:
+            # convert Python lists to ctypes arrays
+            s_lines = (ctypes.c_char_p * self.height)(*map(lambda b: bytes(b), self.static_lines))
+            u_lines = (ctypes.c_char_p * self.height)(*map(lambda b: bytes(b) if b else b"", self.ui_lines))
+            out_rows = (ctypes.c_char_p * self.height)()
+            EApp._merge_rows(s_lines, u_lines, out_rows, self.height)
+            
+            # update prev_rows in place, reuse buffers
+            for i in range(self.height):
+                self.prev_rows[i][:] = out_rows[i]
+            return out_rows
+
+        # Pure Python fallback
+        out_rows = []
         for i in range(self.height):
-            self.prev_rows[i][:] = out_rows[i]
+            s = self.static_lines[i]
+            u = self.ui_lines[i]
+            target = u if (u and u != b"") else s
+            
+            if self.prev_rows[i] != target:
+                self.prev_rows[i][:] = target
+            out_rows.append(target)
         return out_rows
 
     def run(self):
