@@ -10,7 +10,7 @@
 !/architecture.svg
 !/setup.py
 *.swp
-# 3. Standard Python ignores (for inside the tracked folders)
+
 __pycache__/
 *pycache*
 *.py[cod]
